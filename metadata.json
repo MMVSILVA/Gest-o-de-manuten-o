@@ -1,0 +1,6 @@
+{
+  "name": "Manutech",
+  "description": "Sistema de Gestão de Manutenção Inteligente - SENAI",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
