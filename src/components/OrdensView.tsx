@@ -41,8 +41,8 @@ export const OrdensView: React.FC<Props> = ({
   // Controles de Acesso Granulares por Cargo de Trabalho
   const isInstrutor = colaboradorLogado?.cargo === "Instrutor";
   
-  // Usuário Instrutor é estritamente BLOQUEADO de Excluir O.S.!
-  const bloquearExcluir = isInstrutor;
+  // Apenas Gestores podem excluir O.S. (bloqueado para Técnicos, Mecânicos e Instrutores)
+  const bloquearExcluir = colaboradorLogado?.cargo !== "Gestor";
 
   return (
     <div className="space-y-6 text-slate-800">
@@ -129,6 +129,11 @@ export const OrdensView: React.FC<Props> = ({
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeStatus}`}>
                           {os.status}
                         </span>
+                        {os.status === 'Concluído' && os.dataConclusao && (
+                          <div className="text-[10px] text-slate-500 mt-1 font-semibold">
+                            Concluído em: <span className="text-emerald-600 font-bold">{os.dataConclusao}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-1 justify-center">
@@ -153,30 +158,6 @@ export const OrdensView: React.FC<Props> = ({
                             <CheckCircle className="w-3.5 h-3.5 text-slate-400" />
                             <span>Concluir</span>
                           </button>
-
-                          {/* REQUISITO: Bloquear o botão de excluir O.S no modo de Mecânico e Instrutor */}
-                          {bloquearExcluir ? (
-                            <span 
-                              className="p-1.5 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex items-center space-x-1 relative group"
-                              title="Restrito: Bloqueado para Mecânicos e Instrutores"
-                            >
-                              <Lock className="w-3.5 h-3.5 text-slate-400" />
-                              <span className="text-[9px] font-extrabold text-slate-400">Lock</span>
-                              
-                              {/* Overlay de tooltip explicativo */}
-                              <div className="hidden group-hover:block absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-slate-950 text-white text-[9px] px-2 py-1.5 rounded shadow whitespace-nowrap z-50">
-                                Bloqueado para o cargo atual.
-                              </div>
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => onExcluirOS(os.id)}
-                              className="p-1.5 bg-white hover:bg-red-50 text-red-600 rounded-lg border border-slate-200 transition cursor-pointer"
-                              title="Excluir O.S."
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
 
                         </div>
                       </td>

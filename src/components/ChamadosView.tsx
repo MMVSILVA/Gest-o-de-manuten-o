@@ -238,6 +238,35 @@ export const ChamadosView: React.FC<Props> = ({
               </div>
             </div>
 
+            {/* Gestores Responsáveis pela Triagem & Contratação */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+              <div className="border-b border-slate-100 pb-2">
+                <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Gestores de Recebimento & Contratação</h3>
+                <p className="text-[9.5px] text-slate-400 mt-0.5">Encarregados regulamentares da contratação de O.S.</p>
+              </div>
+              <div className="space-y-3.5">
+                <div className="flex items-center space-x-3 p-2 bg-slate-50/50 hover:bg-slate-50 rounded-xl border border-slate-150 transition">
+                  <div className="w-8 h-8 rounded-full bg-blue-105 text-blue-700 font-extrabold flex items-center justify-center text-xs shadow-xs shrink-0 font-sans">
+                    AR
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-black text-slate-800 truncate">Alexandre Rodrigues</h4>
+                    <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider truncate">Gestor de Manutenção</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3 p-2 bg-slate-50/50 hover:bg-slate-50 rounded-xl border border-slate-150 transition">
+                  <div className="w-8 h-8 rounded-full bg-emerald-110 text-emerald-700 font-extrabold flex items-center justify-center text-xs shadow-xs shrink-0 font-sans">
+                    WS
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-black text-slate-800 truncate">Wesley Silva</h4>
+                    <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider truncate">Gestor de Operações</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Guia de Gestão de Confiabilidade regulamentar */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-2xl border border-blue-150 space-y-3">
               <h4 className="font-bold text-blue-900 text-xs uppercase tracking-wider flex items-center space-x-1.5">

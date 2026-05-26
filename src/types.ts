@@ -48,6 +48,8 @@ export interface OrdemServico {
   data: string;
   timestamp: number;
   rawDate: string;
+  dataConclusao?: string;
+  timestampConclusao?: number;
 }
 
 export interface Chamado {

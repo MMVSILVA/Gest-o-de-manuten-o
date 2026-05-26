@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import { Colaborador, Equipamento, OrdemServico, AccessibilityConfig, Chamado } from "./types";
-import { carregarSimulacaoLocalStorage } from "./data/mockData";
+import { carregarSimulacaoLocalStorage, COLABORADORES_PADRAO } from "./data/mockData";
 import { LoginScreen } from "./components/LoginScreen";
 import { DashboardView } from "./components/DashboardView";
 import { EquipmentsView } from "./components/EquipmentsView";
@@ -39,7 +39,17 @@ export default function App() {
 
   const [colaboradores, setColaboradores] = useState<Colaborador[]>(() => {
     const sColabs = localStorage.getItem("manutech_colaboradores");
-    return sColabs ? JSON.parse(sColabs) : [];
+    let parseadas: Colaborador[] = sColabs ? JSON.parse(sColabs) : [];
+    if (parseadas.length === 0) {
+      return COLABORADORES_PADRAO;
+    }
+    // Garante que sementes importantes (como Alexandre e Wesley) existam se ausentes
+    COLABORADORES_PADRAO.forEach(p => {
+      if (!parseadas.some(c => c.matricula === p.matricula)) {
+        parseadas.push(p);
+      }
+    });
+    return parseadas;
   });
 
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>(() => {
@@ -356,7 +366,7 @@ export default function App() {
       prioridade: chamado.prioridade,
       tipo: chamado.tipo,
       status: "Pendente",
-      descricao: `[GERADA A PARTIR DE CHAMADO INDUSTRIAL APROVADO] — ` + chamado.descricao,
+      descricao: `[O.S. RECEBIDA E CONTRATADA POR GESTOR: ${colaboradorLogado ? colaboradorLogado.nome : "Alexandre Rodrigues"}] — ` + chamado.descricao,
       data: dataFormatada,
       timestamp: Date.now(),
       rawDate: new Date().toISOString().slice(0, 16)
@@ -367,7 +377,34 @@ export default function App() {
   };
 
   const handleAlterarStatus = (id: string, novo: "Em Andamento" | "Concluído") => {
-    setOrdens(prev => prev.map(o => o.id === id ? { ...o, status: novo } : o));
+    const dataObj = new Date();
+    const diaPad = String(dataObj.getDate()).padStart(2, "0");
+    const mesPad = String(dataObj.getMonth() + 1).padStart(2, "0");
+    const horaPad = String(dataObj.getHours()).padStart(2, "0");
+    const minPad = String(dataObj.getMinutes()).padStart(2, "0");
+    const dataFormatada = `${diaPad}/${mesPad}/${dataObj.getFullYear()} - ${horaPad}:${minPad}`;
+
+    setOrdens(prev => prev.map(o => {
+      if (o.id === id) {
+        if (novo === "Concluído") {
+          return {
+            ...o,
+            status: novo,
+            dataConclusao: dataFormatada,
+            timestampConclusao: dataObj.getTime()
+          };
+        } else {
+          return {
+            ...o,
+            status: novo,
+            dataConclusao: undefined,
+            timestampConclusao: undefined
+          };
+        }
+      }
+      return o;
+    }));
+
     if (!navigator.onLine) {
       queueOfflineAction("ALTERAR_STATUS", { id, status: novo });
     }
@@ -583,6 +620,7 @@ export default function App() {
       <LoginScreen 
         colaboradores={colaboradores}
         onLogin={handleLogin}
+        onRegistrarColaborador={handleAdicionarColaborador}
       />
     );
   }

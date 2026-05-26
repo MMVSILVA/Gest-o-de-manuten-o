@@ -16,6 +16,8 @@ export const COLABORADORES_PADRAO: Colaborador[] = [
   { id: "1008", nome: "Roberto Almeida", matricula: "1008", cargo: "Instrutor", senhaText: "instrutor1", timestampCadastro: Date.now() - 3000000 },
   { id: "1009", nome: "Fernanda Costa", matricula: "1009", cargo: "Técnico", senhaText: "tecnico3", timestampCadastro: Date.now() - 2000000 },
   { id: "1010", nome: "João Pedro Ramos", matricula: "1010", cargo: "Instrutor", senhaText: "instrutor2", timestampCadastro: Date.now() - 1000000 },
+  { id: "1011", nome: "Alexandre Rodrigues", matricula: "1011", cargo: "Gestor", senhaText: "alexandre123", timestampCadastro: Date.now() - 500000 },
+  { id: "1012", nome: "Wesley Silva", matricula: "1012", cargo: "Gestor", senhaText: "wesley123", timestampCadastro: Date.now() - 450000 },
 ];
 
 export const EQUIPAMENTOS_PADRAO: Equipamento[] = [

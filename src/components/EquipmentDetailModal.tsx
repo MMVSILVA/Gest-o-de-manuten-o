@@ -552,15 +552,22 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                                     <span>Técnico: <span className="text-zinc-750 font-black">{os.solicitante}</span></span>
                                   </div>
 
-                                  <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase ${
-                                    isConcluido 
-                                      ? 'bg-emerald-100 text-emerald-800' 
-                                      : isAndamento 
-                                        ? 'bg-blue-105 text-blue-800' 
-                                        : 'bg-amber-100 text-amber-800'
-                                  }`}>
-                                    {os.status}
-                                  </span>
+                                  <div className="flex flex-col items-end text-right">
+                                    <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase ${
+                                      isConcluido 
+                                        ? 'bg-emerald-100 text-emerald-800' 
+                                        : isAndamento 
+                                          ? 'bg-blue-105 text-blue-800' 
+                                          : 'bg-amber-100 text-amber-800'
+                                    }`}>
+                                      {os.status}
+                                    </span>
+                                    {isConcluido && os.dataConclusao && (
+                                      <span className="text-[8px] text-emerald-600 font-bold mt-1">
+                                        Concluído em: {os.dataConclusao}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>

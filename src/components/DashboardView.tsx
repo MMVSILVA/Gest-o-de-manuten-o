@@ -43,6 +43,8 @@ export const DashboardView: React.FC<Props> = ({
     y: number;
   } | null>(null);
 
+  const [tipoGrafico, setTipoGrafico] = useState<'misto' | 'barras' | 'linhas'>('misto');
+
   const chartData = useMemo(() => {
     const nomesMeses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
     const list = [];
@@ -120,6 +122,31 @@ export const DashboardView: React.FC<Props> = ({
     .domain([0, yDomainMax])
     .nice()
     .rangeRound([height - margin.bottom, margin.top]);
+
+  // Coordenadas para o gráfico de linha quando selecionado
+  const pontosPreventiva = useMemo(() => {
+    return chartData.map(d => {
+      const xVal = (x0(d.monthName) || 0) + x0.bandwidth() / 2;
+      const yVal = y(d.Preventiva);
+      return { x: xVal, y: yVal, val: d.Preventiva, month: d.monthName };
+    });
+  }, [chartData, x0, y]);
+
+  const pontosCorretiva = useMemo(() => {
+    return chartData.map(d => {
+      const xVal = (x0(d.monthName) || 0) + x0.bandwidth() / 2;
+      const yVal = y(d.Corretiva);
+      return { x: xVal, y: yVal, val: d.Corretiva, month: d.monthName };
+    });
+  }, [chartData, x0, y]);
+
+  const pathPreventiva = useMemo(() => {
+    return pontosPreventiva.reduce((acc, p, i) => acc + (i === 0 ? `M ${p.x} ${p.y}` : ` L ${p.x} ${p.y}`), "");
+  }, [pontosPreventiva]);
+
+  const pathCorretiva = useMemo(() => {
+    return pontosCorretiva.reduce((acc, p, i) => acc + (i === 0 ? `M ${p.x} ${p.y}` : ` L ${p.x} ${p.y}`), "");
+  }, [pontosCorretiva]);
 
   // KPIs
   const kpis = useMemo(() => {
@@ -483,12 +510,47 @@ export const DashboardView: React.FC<Props> = ({
 
         {/* Gráfico de Tendências e Volume de Manutenção - Interativo D3 */}
         <div className="lg:col-span-7 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between relative overflow-visible">
-          <div className="flex justify-between items-center mb-4 select-none">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 select-none">
             <div>
               <h3 className="font-bold text-slate-800 text-sm">Distribuição Sistemática de O.S. (Últimos Meses)</h3>
               <p className="text-[10px] text-slate-400 font-medium">Volumes comparativos entre categorias de intervenção</p>
             </div>
-            <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-105 font-extrabold px-2.5 py-1 rounded-full uppercase">Gráfico Dinâmico D3.js</span>
+            
+            <div className="flex items-center space-x-1.5 border border-slate-200 bg-slate-50 p-1 rounded-xl self-start sm:self-auto shadow-xs">
+              <button
+                type="button"
+                onClick={() => setTipoGrafico('misto')}
+                className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                  tipoGrafico === 'misto' 
+                    ? 'bg-white text-blue-700 shadow-sm border border-slate-100' 
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Misto (Barras + Linhas)
+              </button>
+              <button
+                type="button"
+                onClick={() => setTipoGrafico('barras')}
+                className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                  tipoGrafico === 'barras' 
+                    ? 'bg-white text-blue-700 shadow-sm border border-slate-100' 
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Barras
+              </button>
+              <button
+                type="button"
+                onClick={() => setTipoGrafico('linhas')}
+                className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                  tipoGrafico === 'linhas' 
+                    ? 'bg-white text-blue-700 shadow-sm border border-slate-100' 
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Linhas
+              </button>
+            </div>
           </div>
 
           {/* Área do Gráfico SVG com Tooltip Dinâmica */}
@@ -527,7 +589,7 @@ export const DashboardView: React.FC<Props> = ({
               ))}
 
               {/* Desenho das Barras Clustered D3 */}
-              {chartData.map((d) => (
+              {(tipoGrafico === 'barras' || tipoGrafico === 'misto') && chartData.map((d) => (
                 <g key={d.monthName} transform={`translate(${x0(d.monthName)}, 0)`}>
                   {keys.map((key) => {
                     const val = d[key];
@@ -547,11 +609,10 @@ export const DashboardView: React.FC<Props> = ({
                         width={barWidth}
                         height={Math.max(barHeight, 2)}
                         fill={fillColor}
-                        opacity={hoveredBar ? (isHovered ? 1.0 : 0.65) : 0.9}
+                        opacity={hoveredBar ? (isHovered ? 1.0 : 0.3) : (tipoGrafico === 'misto' ? 0.45 : 0.9)}
                         rx={2.5}
                         className="transition-all duration-200 cursor-pointer hover:scale-y-[1.02] origin-bottom hover:brightness-110"
                         onMouseEnter={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
                           setHoveredBar({
                             month: d.monthName,
                             category: key,
@@ -566,6 +627,87 @@ export const DashboardView: React.FC<Props> = ({
                   })}
                 </g>
               ))}
+
+              {/* Desenho do Gráfico de Linha D3 */}
+              {(tipoGrafico === 'linhas' || tipoGrafico === 'misto') && (
+                <g>
+                  {/* Linha Preventiva */}
+                  <path
+                    d={pathPreventiva}
+                    fill="none"
+                    stroke="#2563eb"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="drop-shadow-xs transition-all duration-300"
+                  />
+
+                  {/* Círculos da Preventiva */}
+                  {pontosPreventiva.map(p => {
+                    const isHovered = hoveredBar && hoveredBar.month === p.month && hoveredBar.category === 'Preventiva';
+                    return (
+                      <circle
+                        key={p.month}
+                        cx={p.x}
+                        cy={p.y}
+                        r={isHovered ? 6 : 4.5}
+                        fill="#2563eb"
+                        stroke="#fff"
+                        strokeWidth={2}
+                        className="cursor-pointer transition-all duration-150 hover:scale-125"
+                        onMouseEnter={() => {
+                          setHoveredBar({
+                            month: p.month,
+                            category: 'Preventiva',
+                            value: p.val,
+                            x: p.x,
+                            y: p.y
+                          });
+                        }}
+                        onMouseLeave={() => setHoveredBar(null)}
+                      />
+                    );
+                  })}
+
+                  {/* Linha Corretiva */}
+                  <path
+                    d={pathCorretiva}
+                    fill="none"
+                    stroke="#ef4444"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="drop-shadow-xs transition-all duration-300"
+                  />
+
+                  {/* Círculos da Corretiva */}
+                  {pontosCorretiva.map(p => {
+                    const isHovered = hoveredBar && hoveredBar.month === p.month && hoveredBar.category === 'Corretiva';
+                    return (
+                      <circle
+                        key={p.month}
+                        cx={p.x}
+                        cy={p.y}
+                        r={isHovered ? 6 : 4.5}
+                        fill="#ef4444"
+                        stroke="#fff"
+                        strokeWidth={2}
+                        className="cursor-pointer transition-all duration-150 hover:scale-125"
+                        onMouseEnter={() => {
+                          setHoveredBar({
+                            month: p.month,
+                            category: 'Corretiva',
+                            value: p.val,
+                            x: p.x,
+                            y: p.y
+                          });
+                        }}
+                        onMouseLeave={() => setHoveredBar(null)}
+                      />
+                    );
+                  })}
+                </g>
+              )}
 
               {/* Rótulo de Eixo X */}
               <line
