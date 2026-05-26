@@ -34,19 +34,35 @@ export default function App() {
   // Estados principais
   const [colaboradorLogado, setColaboradorLogado] = useState<Colaborador | null>(() => {
     const salvo = localStorage.getItem("manutech_colaborador");
-    return salvo ? JSON.parse(salvo) : null;
+    if (salvo) {
+      try {
+        const user = JSON.parse(salvo);
+        const padrao = COLABORADORES_PADRAO.find(p => p.matricula === user.matricula);
+        if (padrao) {
+          user.cargo = padrao.cargo; // restaura cargo regulamentar se for um colaborador padrão
+        }
+        return user;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   });
 
   const [colaboradores, setColaboradores] = useState<Colaborador[]>(() => {
     const sColabs = localStorage.getItem("manutech_colaboradores");
     let parseadas: Colaborador[] = sColabs ? JSON.parse(sColabs) : [];
     if (parseadas.length === 0) {
-      return COLABORADORES_PADRAO;
+      return COLABORADORES_PADRAO.map(p => ({ ...p }));
     }
     // Garante que sementes importantes (como Alexandre e Wesley) existam se ausentes
     COLABORADORES_PADRAO.forEach(p => {
-      if (!parseadas.some(c => c.matricula === p.matricula)) {
-        parseadas.push(p);
+      const idx = parseadas.findIndex(c => c.matricula === p.matricula);
+      if (idx !== -1) {
+        // Enforça o cargo original das sementes regulamentares
+        parseadas[idx].cargo = p.cargo;
+      } else {
+        parseadas.push({ ...p });
       }
     });
     return parseadas;

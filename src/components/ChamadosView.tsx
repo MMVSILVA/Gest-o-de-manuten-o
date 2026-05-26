@@ -101,7 +101,9 @@ export const ChamadosView: React.FC<Props> = ({
         <p className="text-slate-300 text-xs md:text-sm mt-1">
           {isInstrutor 
             ? "Abra chamados para novas avarias ou manutenções planejadas. Suas solicitações serão enviadas em tempo real aos Técnicos e Gestores."
-            : "Avalie e aprove chamados de manutenção emitidos pela equipe de Instrutores SENAI para convertê-los em ordens oficiais."}
+            : colaboradorLogado?.cargo === "Gestor"
+              ? "Avalie e aprove chamados de manutenção emitidos pela equipe de Instrutores SENAI para convertê-los em ordens oficiais."
+              : "Acompanhe o fluxo e a triagem dos chamados de manutenção abertos pelos Instrutores SENAI."}
         </p>
       </div>
 
@@ -357,8 +359,8 @@ export const ChamadosView: React.FC<Props> = ({
                           {badgeStatusVal}
                         </span>
 
-                        {/* Botões de Triagem Rápidos - Apenas para Gestores e Técnicos, e somente se Estiver Pendente */}
-                        {!isInstrutor && c.status === 'Pendente' && (
+                        {/* Botões de Triagem Rápidos - Apenas para Gestores (Alexandre & Wesley), e somente se Estiver Pendente */}
+                        {colaboradorLogado?.cargo === 'Gestor' && c.status === 'Pendente' && (
                           <div className="flex space-x-2 w-full md:w-auto justify-end pt-1">
                             <button
                               onClick={() => onAlterarStatusChamado(c.id, 'Rejeitado')}

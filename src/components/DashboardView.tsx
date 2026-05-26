@@ -309,8 +309,8 @@ export const DashboardView: React.FC<Props> = ({
                 <div className="space-y-3 w-full">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">Fluxo de Triagem do Gestor</p>
                   
-                  {/* Se gestor ou técnico pode aprovar e gerar OS */}
-                  {(colaboradorLogado?.cargo === 'Gestor' || colaboradorLogado?.cargo === 'Técnico') ? (
+                  {/* Se gestor pode aprovar e gerar OS */}
+                  {colaboradorLogado?.cargo === 'Gestor' ? (
                     <button
                       onClick={() => onAcoesSimulacao('aprovar_gerar')}
                       className="w-full bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-extrabold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow cursor-pointer hover:shadow-rose-500/20 flex items-center justify-center space-x-1.5"
@@ -320,7 +320,7 @@ export const DashboardView: React.FC<Props> = ({
                     </button>
                   ) : (
                     <div className="bg-slate-100 p-2.5 rounded-lg text-[10px] text-slate-500 font-semibold leading-relaxed border border-slate-200">
-                      🔒 Logado como {colaboradorLogado?.nome} ({colaboradorLogado?.cargo}). Apenas Gestor ou Técnico regulamentar pode aprovar o chamado de urgência em Triagem.
+                      🔒 Logado como {colaboradorLogado?.nome} ({colaboradorLogado?.cargo}). Apenas Gestor regulamentar pode aprovar o chamado de urgência em Triagem.
                     </div>
                   )}
 
