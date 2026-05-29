@@ -25,6 +25,7 @@ import { PerfilView } from "./components/PerfilView";
 import { AccessibilityToggle } from "./components/AccessibilityToggle";
 import { ChamadosView } from "./components/ChamadosView";
 import { IncendioView } from "./components/IncendioView";
+import { ManuAppLogo } from "./components/ManuAppLogo";
 
 export default function App() {
   // Inicializa localStorage com sementes padronizadas antes de montar
@@ -857,14 +858,8 @@ export default function App() {
       <aside className="w-full md:w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0 border-r border-slate-800">
         <div className="flex-1 overflow-y-auto">
           {/* Logo */}
-          <div className="p-6 flex items-center space-x-3 border-b border-slate-800 shrink-0 select-none">
-            <div className="bg-blue-600 p-2 rounded-xl text-white shadow shadow-blue-500/10">
-              <Wrench className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-extrabold tracking-wider text-slate-100 font-sans leading-none">MANUTECH</h1>
-              <p className="text-[9px] text-blue-400 font-extrabold tracking-widest mt-1">INDUSTRIA 4.0 SENAI</p>
-            </div>
+          <div className="p-4 border-b border-slate-800 shrink-0 select-none">
+            <ManuAppLogo size="sm" />
           </div>
           
           {/* Menu de Navegação Interativo */}

@@ -20,6 +20,7 @@ import {
   CheckCircle2 
 } from "lucide-react";
 import { Colaborador, Cargo } from "../types";
+import { ManuAppLogo } from "./ManuAppLogo";
 
 interface Props {
   colaboradores: Colaborador[];
@@ -202,14 +203,8 @@ export const LoginScreen: React.FC<Props> = ({
           {/* Painel Esquerdo - Branding & SENAI Info */}
           <div className="bg-slate-900 p-5 sm:p-8 md:w-5/12 text-white flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-800">
             <div className="space-y-6">
-              <div className="flex items-center space-x-3">
-                <div className="bg-blue-600 p-2.5 rounded-xl text-white">
-                  <Wrench className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-extrabold tracking-wider">MANUTECH</h2>
-                  <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Oficina Conectada 4.0</p>
-                </div>
+              <div className="mb-2">
+                <ManuAppLogo size="md" />
               </div>
 
               <div className="space-y-1.5 mt-6">
