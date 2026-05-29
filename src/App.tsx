@@ -7,7 +7,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { 
   Wrench, LayoutDashboard, Server, ClipboardList, CalendarDays, PlusCircle, 
   BarChart2, Users, User, ChevronRight, LogOut, Database, ShieldCheck, 
-  X, Check, Play, Volume2, Lock, Sparkles, HelpCircle 
+  X, Check, Play, Volume2, Lock, Sparkles, HelpCircle, Flame 
 } from "lucide-react";
 
 import { Colaborador, Equipamento, OrdemServico, AccessibilityConfig, Chamado } from "./types";
@@ -24,6 +24,7 @@ import { ColaboradoresView } from "./components/ColaboradoresView";
 import { PerfilView } from "./components/PerfilView";
 import { AccessibilityToggle } from "./components/AccessibilityToggle";
 import { ChamadosView } from "./components/ChamadosView";
+import { IncendioView } from "./components/IncendioView";
 
 export default function App() {
   // Inicializa localStorage com sementes padronizadas antes de montar
@@ -109,7 +110,7 @@ export default function App() {
     ];
   });
 
-  const [activeView, setActiveView] = useState<'dashboard' | 'ordens' | 'calendario' | 'nova-os' | 'relatorios' | 'colaboradores' | 'perfil' | 'equipamentos' | 'chamados'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'ordens' | 'calendario' | 'nova-os' | 'relatorios' | 'colaboradores' | 'perfil' | 'equipamentos' | 'chamados' | 'incendio'>('dashboard');
   const [eqSelecionadoId, setEqSelecionadoId] = useState<string | null>(null);
   
   // Estados do Simulador de Emergência IoT
@@ -132,6 +133,73 @@ export default function App() {
     const salvo = localStorage.getItem("manutech_acessibilidade");
     return salvo ? JSON.parse(salvo) : { vozAtiva: false, tamanhoFonte: 'padrao' };
   });
+
+  // Estados para notificações reais do celular do gestor (Alexandre/Wesley)
+  const [mobileNotifications, setMobileNotifications] = useState<any[]>(() => {
+    const salvo = localStorage.getItem("manutech_mobile_notif");
+    if (salvo) return JSON.parse(salvo);
+    return [
+      {
+        id: "notif_1",
+        title: "Dispositivo Conectado",
+        body: "Celular do gestor (Alexandre/Wesley) sincronizado com a rede IoT de emergência do SENAI.",
+        time: "12:30",
+        type: "regular"
+      }
+    ];
+  });
+  const [showPhoneWidget, setShowPhoneWidget] = useState(false);
+  const [newNotifPulse, setNewNotifPulse] = useState(false);
+
+  // Função centralizada para desencadear as notificações do celular do gestor
+  const triggerNotification = (title: string, body: string, type: string = "regular") => {
+    const agora = new Date();
+    const hora = String(agora.getHours()).padStart(2, '0');
+    const min = String(agora.getMinutes()).padStart(2, '0');
+    const timeFormatted = `${hora}:${min}`;
+
+    const novaNotif = {
+      id: "notif_" + Date.now(),
+      title,
+      body,
+      time: timeFormatted,
+      type
+    };
+
+    setMobileNotifications(prev => {
+      const novaLista = [novaNotif, ...prev].slice(0, 50); // cap a 50 itens
+      localStorage.setItem("manutech_mobile_notif", JSON.stringify(novaLista));
+      return novaLista;
+    });
+
+    setNewNotifPulse(true);
+    setTimeout(() => setNewNotifPulse(false), 2000);
+
+    // Reprodução sutil de aviso sonoro sintetizado
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // nota D5
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // nota A5
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.40);
+    } catch (e) {
+      // AudioCtx silenciado em alguns navegadores até interação do usuário
+    }
+
+    // Trigger de notificação nativa HTML5 Web Push se houver permissão
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification(title, { body });
+      }
+    }
+  };
 
   const [imageFullSrc, setImageFullSrc] = useState<string | null>(null);
   const [dataHoraString, setDataHoraString] = useState("");
@@ -316,6 +384,13 @@ export default function App() {
 
     setOrdens(prev => [novaOS, ...prev]);
 
+    // O.S. Criada / Agendada - Dispara Notificação Celular do Gestor
+    triggerNotification(
+      "Nova O.S. Registrada",
+      `Aberta O.S. de tipo ${nova.tipo} para o equipamento ${nova.equipamento}. Prioridade: ${nova.prioridade}.`,
+      "os"
+    );
+
     if (!navigator.onLine) {
       queueOfflineAction("CRIAR_OS", novaOS);
       alert("Ordem de Serviço criada localmente! Você está offline; os dados serão sincronizados quando a conexão retornar.");
@@ -389,6 +464,14 @@ export default function App() {
     };
 
     setOrdens(prev => [novaOS, ...prev]);
+
+    // Dispara alerta no celular do gestor
+    triggerNotification(
+      "O.S. Gerada por Triagem",
+      `Chamado do instrutor ${chamado.solicitante} aprovado. O.S. criada para o equipamento ${chamado.equipamento}.`,
+      "os"
+    );
+
     alert(`O Chamado do Instrutor ${chamado.solicitante} foi aprovado! A Ordem de Serviço foi gerada com sucesso e colocada na fila de intervenções.`);
   };
 
@@ -399,6 +482,15 @@ export default function App() {
     const horaPad = String(dataObj.getHours()).padStart(2, "0");
     const minPad = String(dataObj.getMinutes()).padStart(2, "0");
     const dataFormatada = `${diaPad}/${mesPad}/${dataObj.getFullYear()} - ${horaPad}:${minPad}`;
+
+    const oAlt = ordens.find(o => o.id === id);
+    if (oAlt) {
+      triggerNotification(
+        `O.S. alterada para ${novo}`,
+        `Equipamento "${oAlt.equipamento}" está agora em status de: ${novo}.`,
+        novo === 'Concluído' ? 'regular' : 'os'
+      );
+    }
 
     setOrdens(prev => prev.map(o => {
       if (o.id === id) {
@@ -651,7 +743,8 @@ export default function App() {
     relatorios: "Relatórios & KPIs",
     colaboradores: "Equipe / Colaboradores",
     perfil: "Meu Perfil",
-    chamados: colaboradorLogado?.cargo === "Instrutor" ? "Abrir Chamado" : "Triagem de Chamados"
+    chamados: colaboradorLogado?.cargo === "Instrutor" ? "Abrir Chamado" : "Triagem de Chamados",
+    incendio: "Brigada & Prevenção de Incêndios"
   };
 
   // Busca o equipamento aberto para detalhes (se selecionado)
@@ -720,6 +813,17 @@ export default function App() {
             >
               <CalendarDays className="w-4 h-4" />
               <span>Agenda</span>
+            </button>
+
+            {/* Equipamentos contra Incêndio */}
+            <button 
+              onClick={() => { setActiveView('incendio'); setEqSelecionadoId(null); }}
+              className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl transition font-semibold text-xs uppercase tracking-wider text-left cursor-pointer ${
+                activeView === 'incendio' ? "bg-red-650 text-white shadow-md shadow-red-500/10" : "text-slate-400 hover:bg-slate-800 hover:text-white"
+              }`}
+            >
+              <Flame className="w-4 h-4 text-red-500" />
+              <span>Brigada Incêndio</span>
             </button>
 
             {/* Chamados Técnicos de Manutenção */}
@@ -942,6 +1046,16 @@ export default function App() {
               ordens={ordens}
               colaboradorLogado={colaboradorLogado}
               onNavigate={setActiveView}
+              onAgendarOS={handleCriarOS}
+              triggerNotification={triggerNotification}
+            />
+          )}
+
+          {activeView === 'incendio' && (
+            <IncendioView 
+              colaboradorLogado={colaboradorLogado}
+              onEmitirOS={handleCriarOS}
+              triggerNotification={triggerNotification}
             />
           )}
 
@@ -1024,6 +1138,129 @@ export default function App() {
           />
         </div>
       )}
+
+      {/* Simulador de Celular do Gestor */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        {!showPhoneWidget && (
+          <button
+            onClick={() => setShowPhoneWidget(true)}
+            className={`bg-slate-900 border border-slate-700 text-white p-3 rounded-full shadow-2xl flex items-center space-x-2 transition duration-200 hover:scale-105 active:scale-95 cursor-pointer relative ${
+              newNotifPulse ? "animate-bounce ring-4 ring-rose-500/30" : ""
+            }`}
+          >
+            <div className="relative">
+              <span className="text-lg">📱</span>
+              {mobileNotifications.length > 0 && (
+                <span className="absolute -top-2.5 -right-2.5 bg-rose-650 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-slate-900 animate-pulse">
+                  {mobileNotifications.length}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-wider pr-1 text-amber-400">Celular do Gestor</span>
+          </button>
+        )}
+
+        {showPhoneWidget && (
+          <div className="w-[300px] h-[480px] bg-slate-950 rounded-[36px] shadow-2xl border-[6px] border-slate-800 overflow-hidden flex flex-col relative animate-in slide-in-from-bottom-10 duration-300">
+            {/* Notch */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-4 bg-slate-800 rounded-b-xl z-50 flex items-center justify-center">
+              <div className="w-12 h-1 bg-slate-900 rounded-full"></div>
+            </div>
+
+            {/* status-bar */}
+            <div className="h-6 bg-slate-950 px-5 flex items-center justify-between text-[9px] text-slate-400 font-mono font-bold select-none pt-1">
+              <span>{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+              <div className="flex items-center space-x-1.5">
+                <span>SENAI-SIM</span>
+                <span className="text-[7px]">⚡ LTE</span>
+                <span>🔋 100%</span>
+              </div>
+            </div>
+
+            {/* Cabecalho interna do celular */}
+            <div className="bg-slate-900/95 border-b border-slate-800 p-3 flex justify-between items-center shrink-0">
+              <div className="flex items-center space-x-2">
+                <span className="text-base">🔔</span>
+                <div className="text-left">
+                  <h4 className="text-[10px] font-black text-white uppercase tracking-wider">Central de Alertas</h4>
+                  <p className="text-[8px] text-slate-400"> Wesley & Alexandre (Gestão)</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPhoneWidget(false)}
+                className="text-[9px] bg-slate-800 hover:bg-slate-705 font-bold px-2 py-1 rounded-lg text-slate-300 transition"
+              >
+                Minimizar
+              </button>
+            </div>
+
+            {/* Corpo de Notificacoes */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-950/95">
+              {mobileNotifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 py-12 text-center space-y-2.5">
+                  <span className="text-2xl">💤</span>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Tudo Sob Controle</p>
+                  <p className="text-[9px] text-slate-500 leading-relaxed max-w-[180px]">
+                    Nenhum alerta pendente. Aberturas de O.S., inspeções brigadistas e preventivas aparecerão aqui.
+                  </p>
+                </div>
+              ) : (
+                mobileNotifications.map((notif: any) => {
+                  let badgeIcon = "⚙️";
+                  let borderCor = "border-l-blue-500";
+                  if (notif.type === "os") {
+                    badgeIcon = "⚙️";
+                    borderCor = "border-l-rose-500";
+                  } else if (notif.type === "calendar") {
+                    badgeIcon = "📅";
+                    borderCor = "border-l-amber-500";
+                  } else if (notif.type === "fire") {
+                    badgeIcon = "🚨";
+                    borderCor = "border-l-red-500";
+                  }
+
+                  return (
+                    <div 
+                      key={notif.id} 
+                      className={`bg-slate-900 border-l-4 ${borderCor} p-2.5 rounded-r-xl space-y-1 text-left animate-in fade-in slide-in-from-top-2 duration-200`}
+                    >
+                      <div className="flex justify-between items-center text-[7.5px] font-extrabold text-slate-400 uppercase tracking-widest font-mono">
+                        <span className="flex items-center space-x-1">
+                          <span>{badgeIcon}</span>
+                          <span>{notif.type === 'fire' ? 'BRIGADA INCÊNDIO' : notif.type === 'calendar' ? 'AGENDAMENTO' : 'SISTEMA O.S.'}</span>
+                        </span>
+                        <span>{notif.time}</span>
+                      </div>
+                      <h5 className="text-[10px] font-bold text-rose-100/90 leading-tight">{notif.title}</h5>
+                      <p className="text-[9.5px] text-slate-300 leading-normal">{notif.body}</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Rodapé Interno */}
+            {mobileNotifications.length > 0 && (
+              <div className="p-2 bg-slate-900/60 border-t border-slate-800 flex items-center justify-between shrink-0">
+                <button
+                  onClick={() => {
+                    setMobileNotifications([]);
+                    localStorage.setItem("manutech_mobile_notif", "[]");
+                  }}
+                  className="text-[9px] font-extrabold uppercase text-slate-400 hover:text-white transition w-full text-center py-1 bg-slate-950/40 hover:bg-slate-950 rounded-lg"
+                >
+                  Limpar Todas
+                </button>
+              </div>
+            )}
+            
+            {/* Home Indicator */}
+            <div className="h-3 bg-slate-950 shrink-0 flex items-center justify-center">
+              <div className="w-20 h-1 bg-slate-800 rounded-full"></div>
+            </div>
+          </div>
+        )}
+      </div>
 
     </div>
   );

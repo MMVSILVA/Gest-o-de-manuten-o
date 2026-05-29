@@ -159,6 +159,18 @@ export const OrdensView: React.FC<Props> = ({
                             <span>Concluir</span>
                           </button>
 
+                          {/* REQUISITO: Adicionar o botão de excluir somente para gestor */}
+                          {!bloquearExcluir && (
+                            <button
+                              onClick={() => onExcluirOS(os.id)}
+                              className="p-1 px-2.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-lg border border-red-200 text-[10px] font-bold transition flex items-center space-x-1 cursor-pointer"
+                              title="Excluir O.S."
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              <span>Excluir</span>
+                            </button>
+                          )}
+
                         </div>
                       </td>
                     </tr>

@@ -13,16 +13,28 @@ interface Props {
   ordens: OrdemServico[];
   colaboradorLogado: Colaborador | null;
   onNavigate: (view: any) => void;
+  onAgendarOS?: (nova: any) => void;
+  triggerNotification?: (title: string, body: string, type?: string) => void;
 }
 
 export const CalendarView: React.FC<Props> = ({
   ordens,
   colaboradorLogado,
-  onNavigate
+  onNavigate,
+  onAgendarOS,
+  triggerNotification
 }) => {
   const [mes, setMes] = useState(new Date().getMonth());
   const [ano, setAno] = useState(new Date().getFullYear());
   const [diaSelecionado, setDiaSelecionado] = useState(new Date().getDate());
+
+  // Form states for scheduling
+  const [showAgendarForm, setShowAgendarForm] = useState(false);
+  const [equipamento, setEquipamento] = useState("");
+  const [tipo, setTipo] = useState<'Preventiva' | 'Corretiva' | 'Preditiva' | 'Treinamento' | 'Calibração'>("Preventiva");
+  const [prioridade, setPrioridade] = useState<'Baixa' | 'Média' | 'Alta'>("Média");
+  const [hora, setHora] = useState("09:00");
+  const [descricao, setDescricao] = useState("");
 
   const nomesMeses = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -73,6 +85,47 @@ export const CalendarView: React.FC<Props> = ({
     return ordens.filter(os => os.data && os.data.includes(dataChave));
   };
 
+  const handleSubmitAgendamento = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!equipamento.trim() || !descricao.trim()) {
+      alert("Por favor, preencha o nome do equipamento e a descrição do agendamento!");
+      return;
+    }
+
+    const diaPad = String(diaSelecionado).padStart(2, '0');
+    const mesPad = String(mes + 1).padStart(2, '0');
+    const dateTimeLocal = `${ano}-${mesPad}-${diaPad}T${hora || '08:00'}`;
+
+    if (onAgendarOS) {
+      onAgendarOS({
+        equipamento: equipamento.trim(),
+        solicitante: colaboradorLogado?.nome || "Brigada SENAI",
+        prioridade,
+        tipo,
+        status: 'Pendente',
+        descricao: descricao.trim(),
+        rawDate: dateTimeLocal
+      });
+
+      // Trigger de notificação no celular fictício
+      if (triggerNotification) {
+        triggerNotification(
+          "Atividade Agendada", 
+          `Nova O.S. agendada para o dia ${diaPad}/${mesPad}/${ano} às ${hora} para o equipamento ${equipamento.trim()}`,
+          "calendar"
+        );
+      }
+
+      // Limpa formulário
+      setEquipamento("");
+      setDescricao("");
+      setShowAgendarForm(false);
+      alert("Atividade agendada com sucesso no calendário regulamentar!");
+    } else {
+      alert("Erro: Callback de agendamento não configurado.");
+    }
+  };
+
   return (
     <div className="space-y-6 text-slate-800">
       
@@ -80,7 +133,7 @@ export const CalendarView: React.FC<Props> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-slate-900">Programação de Atividades</h2>
-          <p className="text-slate-500 text-xs md:text-sm mt-1">
+          <p className="text-slate-550 text-xs md:text-sm mt-1">
             Planeje sistematicamente as intervenções com base na legenda cronológica por categoria e nível de urgência.
           </p>
         </div>
@@ -100,13 +153,13 @@ export const CalendarView: React.FC<Props> = ({
             <div className="flex space-x-1.5">
               <button 
                 onClick={() => mudarMes(-1)}
-                className="p-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-500 transition cursor-pointer"
+                className="p-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-505 transition cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button 
                 onClick={() => mudarMes(1)}
-                className="p-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-500 transition cursor-pointer"
+                className="p-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-505 transition cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -195,26 +248,135 @@ export const CalendarView: React.FC<Props> = ({
         {/* Painel Direito: Lista de atividades do dia selecionado */}
         <div className="lg:col-span-5 space-y-4">
           
-          <div className="bg-slate-900 text-white p-5 rounded-2xl shadow-md border border-slate-800">
-            <h3 className="font-extrabold text-[10px] uppercase tracking-wider text-amber-400 flex items-center space-x-1.5">
-              <Clock className="w-4 h-4 text-amber-400" />
-              <span>Programação para o Dia</span>
-            </h3>
-            <p className="text-base font-bold mt-1">
-              {String(diaSelecionado).padStart(2, '0')} de {nomesMeses[mes]} de {ano}
-            </p>
+          <div className="bg-slate-900 text-white p-5 rounded-2xl shadow-md border border-slate-800 flex justify-between items-center">
+            <div>
+              <h3 className="font-extrabold text-[10px] uppercase tracking-wider text-amber-400 flex items-center space-x-1.5">
+                <Clock className="w-4 h-4 text-amber-400" />
+                <span>Programação para o Dia</span>
+              </h3>
+              <p className="text-base font-bold mt-1">
+                {String(diaSelecionado).padStart(2, '0')} de {nomesMeses[mes]} de {ano}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowAgendarForm(!showAgendarForm)}
+              className="bg-amber-400 hover:bg-amber-500 text-slate-950 px-3 py-1.5 rounded-xl text-[9px] font-extrabold uppercase tracking-wider transition active:scale-95"
+            >
+              {showAgendarForm ? "Ver Atividades" : "Agendar Evento"}
+            </button>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3 min-h-[280px] max-h-[460px] overflow-y-auto">
-            {ordensDoDiaSeleccionado.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-3">
-                <AlertCircle className="w-10 h-10 text-emerald-500 shrink-0" />
-                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Ativos em Operação Plena</p>
-                <p className="text-[11px] text-center max-w-[200px] text-slate-400 select-all">
-                  Nenhuma manutenção ou intervenção agendada para hoje.
-                </p>
+          {showAgendarForm ? (
+            <form onSubmit={handleSubmitAgendamento} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3.5">
+              <h4 className="font-extrabold text-[11px] text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
+                Agendar Evento: {String(diaSelecionado).padStart(2, '0')}/{String(mes+1).padStart(2, '0')}/{ano}
+              </h4>
+
+              <div className="space-y-1">
+                <label className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block">Equipamento / Ativo</label>
+                <input
+                  type="text"
+                  required
+                  value={equipamento}
+                  onChange={e => setEquipamento(e.target.value)}
+                  placeholder="Nome do torno, máquina ou área"
+                  className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-200 outline-hidden focus:border-blue-500 bg-slate-50/50"
+                />
               </div>
-            ) : (
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block">Tipo de Intervenção</label>
+                  <select
+                    value={tipo}
+                    onChange={e => setTipo(e.target.value as any)}
+                    className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-200 outline-hidden bg-slate-50/50"
+                  >
+                    <option value="Preventiva">Preventiva</option>
+                    <option value="Corretiva">Corretiva</option>
+                    <option value="Preditiva">Preditiva</option>
+                    <option value="Treinamento">Treino SENAI</option>
+                    <option value="Calibração">Calibração</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block">Horário</label>
+                  <input
+                    type="time"
+                    required
+                    value={hora}
+                    onChange={e => setHora(e.target.value)}
+                    className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-200 outline-hidden bg-slate-50/50"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block">Nível de Prioridade</label>
+                <div className="flex space-x-2">
+                  {(['Baixa', 'Média', 'Alta'] as const).map((prio) => {
+                    const ativo = prioridade === prio;
+                    let cores = "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100";
+                    if (ativo) {
+                      if (prio === 'Baixa') cores = "bg-blue-50 border-blue-300 text-blue-700 font-bold";
+                      if (prio === 'Média') cores = "bg-amber-105 border-amber-300 text-amber-800 font-bold";
+                      if (prio === 'Alta') cores = "bg-red-50 border-red-300 text-red-700 font-bold";
+                    }
+                    return (
+                      <button
+                        key={prio}
+                        type="button"
+                        onClick={() => setPrioridade(prio)}
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] text-center border transition uppercase tracking-wide cursor-pointer ${cores}`}
+                      >
+                        {prio}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block">Descrição do Evento / Serviço</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={descricao}
+                  onChange={e => setDescricao(e.target.value)}
+                  placeholder="Descreva detalhadamente o escopo..."
+                  className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-200 outline-hidden focus:border-blue-500 bg-slate-50/50 resize-none"
+                />
+              </div>
+
+              <div className="flex space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAgendarForm(false)}
+                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-[10px] rounded-xl uppercase tracking-wider transition"
+                >
+                  Voltar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-2 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] rounded-xl uppercase tracking-wider transition shadow-md shadow-blue-500/15"
+                >
+                  Confirmar Agendamento
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3 min-h-[280px] max-h-[460px] overflow-y-auto">
+              {ordensDoDiaSeleccionado.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-3">
+                  <AlertCircle className="w-10 h-10 text-emerald-500 shrink-0" />
+                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Ativos em Operação Plena</p>
+                  <p className="text-[11px] text-center max-w-[200px] text-slate-400 select-all">
+                    Nenhuma manutenção ou intervenção agendada para hoje.
+                  </p>
+                </div>
+              ) : (
               ordensDoDiaSeleccionado.map(os => {
                 let bordaTipo = "border-l-blue-500 bg-blue-50/10";
                 let tipoCor = "text-blue-700 border-blue-200 bg-blue-50";
@@ -266,7 +428,7 @@ export const CalendarView: React.FC<Props> = ({
               })
             )}
           </div>
-
+          )}
         </div>
 
       </div>
