@@ -5,9 +5,10 @@
 
 import React, { useState, useMemo } from "react";
 import { 
-  ClipboardList, Search, PlusCircle, Trash2, CheckCircle, Clock, Lock, ShieldAlert 
+  ClipboardList, Search, PlusCircle, Trash2, CheckCircle, Clock, Lock, ShieldAlert, Download 
 } from "lucide-react";
 import { OrdemServico, Colaborador } from "../types";
+import { exportToCSV } from "../lib/export";
 
 interface Props {
   ordens: OrdemServico[];
@@ -44,6 +45,21 @@ export const OrdensView: React.FC<Props> = ({
   // Apenas Gestores podem excluir O.S. (bloqueado para Técnicos, Mecânicos e Instrutores)
   const bloquearExcluir = colaboradorLogado?.cargo !== "Gestor";
 
+  const handleExportCSV = () => {
+    const headers = [
+      { key: "id", label: "ID da O.S." },
+      { key: "data", label: "Data de Agendamento" },
+      { key: "equipamento", label: "Equipamento/Ativo" },
+      { key: "solicitante", label: "Solicitante/Operador" },
+      { key: "prioridade", label: "Prioridade" },
+      { key: "tipo", label: "Tipo" },
+      { key: "status", label: "Status Geral" },
+      { key: "descricao", label: "Descrição Técnica" },
+      { key: "dataConclusao", label: "Data de Conclusão" }
+    ];
+    exportToCSV(ordens, headers, "ordens_servico_manutech");
+  };
+
   return (
     <div className="space-y-6 text-slate-800">
       
@@ -56,16 +72,28 @@ export const OrdensView: React.FC<Props> = ({
           </p>
         </div>
 
-        {/* Habilita Nova O.S. apenas se não for Instrutor */}
-        {!isInstrutor && (
+        <div className="flex flex-wrap gap-2">
+          {/* Botão de Exportar CSV */}
           <button
-            onClick={() => onNavigate('nova-os')}
-            className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-4 py-2.5 rounded-xl font-bold flex items-center space-x-2 transition text-xs shadow cursor-pointer self-start md:self-auto"
+            onClick={handleExportCSV}
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2.5 rounded-xl font-bold flex items-center space-x-2 transition text-xs shadow-xs border border-slate-200 cursor-pointer self-start md:self-auto"
+            title="Exportar Todas as Ordens de Serviço em formato CSV"
           >
-            <PlusCircle className="w-4 h-4" />
-            <span>Emitir Nova O.S.</span>
+            <Download className="w-3.5 h-3.5" />
+            <span>Exportar Lista</span>
           </button>
-        )}
+
+          {/* Habilita Nova O.S. apenas se não for Instrutor */}
+          {!isInstrutor && (
+            <button
+              onClick={() => onNavigate('nova-os')}
+              className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-4 py-2.5 rounded-xl font-bold flex items-center space-x-2 transition text-xs shadow cursor-pointer self-start md:self-auto"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Emitir Nova O.S.</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Caixa de Pesquisa Geral */}

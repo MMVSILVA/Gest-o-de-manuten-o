@@ -5,9 +5,10 @@
 
 import React, { useState, useMemo } from "react";
 import { 
-  Calendar, ChevronLeft, ChevronRight, Clock, User, PlusCircle, HelpCircle, AlertCircle 
+  Calendar, ChevronLeft, ChevronRight, Clock, User, PlusCircle, HelpCircle, AlertCircle, Download, Search 
 } from "lucide-react";
 import { OrdemServico, Colaborador } from "../types";
+import { exportToCSV } from "../lib/export";
 
 interface Props {
   ordens: OrdemServico[];
@@ -35,6 +36,7 @@ export const CalendarView: React.FC<Props> = ({
   const [prioridade, setPrioridade] = useState<'Baixa' | 'Média' | 'Alta'>("Média");
   const [hora, setHora] = useState("09:00");
   const [descricao, setDescricao] = useState("");
+  const [buscaTotal, setBuscaTotal] = useState("");
 
   const nomesMeses = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -431,6 +433,133 @@ export const CalendarView: React.FC<Props> = ({
           )}
         </div>
 
+      </div>
+
+      {/* Lista de Eventos Completa e Exportador (Requisito: Criar lista com eventos na agenda) */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm md:text-base flex items-center space-x-2">
+              <Calendar className="w-5 h-5 text-amber-500" />
+              <span>Cronograma Geral - Eventos da Agenda</span>
+            </h3>
+            <p className="text-slate-500 text-[11px] md:text-xs">
+              Lista histórica e cronograma de todas as atividades programadas no SENAI.
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              const headers = [
+                { key: "id", label: "ID da Atividade" },
+                { key: "data", label: "Data e Hora" },
+                { key: "equipamento", label: "Equipamento/Ativo" },
+                { key: "tipo", label: "Tipo de Intervenção" },
+                { key: "prioridade", label: "Urgência" },
+                { key: "status", label: "Status da Atividade" },
+                { key: "solicitante", label: "Técnico Agendador" },
+                { key: "descricao", label: "Escopo de Trabalho" }
+              ];
+              exportToCSV(ordens, headers, "agenda_manutencao_senai");
+            }}
+            className="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-xs border border-slate-200 cursor-pointer self-start sm:self-auto transition duration-150"
+            title="Exportar toda a agenda técnica de atividades para arquivo CSV"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Exportar Agenda</span>
+          </button>
+        </div>
+
+        {/* Buscador interno da tabela da agenda */}
+        <div className="flex items-center space-x-3 max-w-sm border border-slate-200 rounded-xl px-3.5 py-2 bg-slate-50/50">
+          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+          <input
+            type="text"
+            value={buscaTotal}
+            onChange={e => setBuscaTotal(e.target.value)}
+            placeholder="Filtrar eventos (ex: Torno, Preventiva, Wesley)..."
+            className="w-full text-xs outline-none text-slate-700 bg-transparent"
+          />
+        </div>
+
+        {/* Tabela de eventos */}
+        <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider border-b border-slate-150">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Data / Hora</th>
+                  <th className="px-4 py-3 font-semibold">Equipamento</th>
+                  <th className="px-4 py-3 font-semibold">Tipo de Evento</th>
+                  <th className="px-4 py-3 font-semibold">Urgência</th>
+                  <th className="px-4 py-3 font-semibold">Descrição Técnica</th>
+                  <th className="px-4 py-3 font-semibold">Responsável</th>
+                  <th className="px-4 py-3 font-semibold text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                {(() => {
+                  const q = buscaTotal.toLowerCase().trim();
+                  const filtradas = q 
+                    ? ordens.filter(os => 
+                        os.equipamento.toLowerCase().includes(q) ||
+                        os.tipo.toLowerCase().includes(q) ||
+                        os.solicitante.toLowerCase().includes(q) ||
+                        os.descricao.toLowerCase().includes(q) ||
+                        os.data.toLowerCase().includes(q)
+                      )
+                    : ordens;
+
+                  if (filtradas.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-8 text-center text-slate-400 italic">
+                          Nenhum evento localizado com este filtro.
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return filtradas.map((os) => {
+                    let tipoBadge = "bg-blue-50 text-blue-700 border-blue-200";
+                    if (os.tipo === "Corretiva") tipoBadge = "bg-red-50 text-red-700 border-red-200";
+                    else if (os.tipo === "Preditiva") tipoBadge = "bg-green-50 text-green-700 border-green-200";
+                    else if (os.tipo === "Treinamento") tipoBadge = "bg-amber-50 text-amber-700 border-amber-200";
+                    else if (os.tipo === "Calibração") tipoBadge = "bg-purple-50 text-purple-700 border-purple-200";
+
+                    let statusBadge = os.status === "Concluído"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-red-50 text-red-700 border-red-150";
+
+                    return (
+                      <tr key={os.id} className="hover:bg-slate-50/70 transition duration-150">
+                        <td className="px-4 py-3 font-mono font-bold whitespace-nowrap text-[11px] text-slate-500">{os.data}</td>
+                        <td className="px-4 py-3 font-bold text-slate-900">{os.equipamento}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${tipoBadge}`}>
+                            {os.tipo}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={`font-bold ${os.prioridade === 'Alta' ? 'text-rose-600' : os.prioridade === 'Média' ? 'text-amber-600' : 'text-blue-600'}`}>
+                            {os.prioridade}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 max-w-[200px] truncate text-slate-500 text-[11px]" title={os.descricao}>{os.descricao}</td>
+                        <td className="px-4 py-3 whitespace-nowrap font-medium">{os.solicitante}</td>
+                        <td className="px-4 py-3 text-center whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-extrabold uppercase border ${statusBadge}`}>
+                            {os.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
     </div>

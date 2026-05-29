@@ -151,6 +151,86 @@ export default function App() {
   const [showPhoneWidget, setShowPhoneWidget] = useState(false);
   const [newNotifPulse, setNewNotifPulse] = useState(false);
 
+  // Estados dos ganchos PWA de Instalação e Notificações Reais no segundo plano
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [pwaInstallable, setPwaInstallable] = useState(false);
+  const [realNotifStatus, setRealNotifStatus] = useState<string>(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      return Notification.permission;
+    }
+    return "unsupported";
+  });
+
+  // Listener para capturar o prompt de instalação disponível do PWA
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setPwaInstallable(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+    };
+  }, []);
+
+  // Handler para acionar prompt nativo de baixar sistema no celular/computador
+  const handlePwaInstallClick = () => {
+    if (!deferredPrompt) {
+      alert(
+        "📲 COMO BAIXAR E INSTALAR O MANUTECH NO SEU CELULAR:\n\n" +
+        "• No iOS (Safari):\n" +
+        "1. Toque no ícone de Compartilhar (quadrado com seta para cima)\n" +
+        "2. Role e selecione a opção 'Adicionar à Tela de Início'.\n" +
+        "3. Toque em 'Adicionar' no canto superior direito.\n\n" +
+        "• No Android ou PC (Chrome / Edge):\n" +
+        "1. Abra as configurações (ícone de 3 pontos no navegador de internet)\n" +
+        "2. Toque em 'Adicionar à Tela de início', 'Instalar aplicativo' ou equivalente.\n\n" +
+        "Isso fixará o ícone oficial na gaveta de aplicativos, permitindo abri-lo offline com carregamento instantâneo!"
+      );
+      return;
+    }
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult: any) => {
+      if (choiceResult.outcome === "accepted") {
+        console.log("Usuário confirmou a instalação do Manutech");
+      }
+      setDeferredPrompt(null);
+      setPwaInstallable(false);
+    });
+  };
+
+  // Solicita permissões de Alerta em Tempo Real
+  const requestRealNotificationPermission = () => {
+    if (!("Notification" in window)) {
+      alert("Seu celular ou navegador corrente não suporta notificações HTML5 nativas.");
+      return;
+    }
+
+    Notification.requestPermission().then((permission) => {
+      setRealNotifStatus(permission);
+      if (permission === "granted") {
+        // Disparar uma notificação de teste imediata usando Service Worker se disponível
+        const testTitle = "Conexão Estabelecida !";
+        const testBody = "As notificações reais do Manutech foram conectadas ao seu celular com sucesso!";
+        
+        if ("serviceWorker" in navigator && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then((reg) => {
+            reg.showNotification(testTitle, {
+              body: testBody,
+              vibrate: [200, 100, 200],
+              tag: "manutech-alert"
+            } as any);
+          });
+        } else {
+          new Notification(testTitle, { body: testBody });
+        }
+      } else if (permission === "denied") {
+        alert("Permissão negada. Ative as permissões nas configurações do navegador do seu celular para receber os alertas em tempo real.");
+      }
+    });
+  };
+
   // Função centralizada para desencadear as notificações do celular do gestor
   const triggerNotification = (title: string, body: string, type: string = "regular") => {
     const agora = new Date();
@@ -193,10 +273,25 @@ export default function App() {
       // AudioCtx silenciado em alguns navegadores até interação do usuário
     }
 
-    // Trigger de notificação nativa HTML5 Web Push se houver permissão
+    // Trigger de notificação nativa HTML5 Web Push se houver permissão (Ativo em segundo plano 2º plano)
     if ("Notification" in window) {
       if (Notification.permission === "granted") {
-        new Notification(title, { body });
+        const notifOptions = {
+          body,
+          tag: "manutech-alert",
+          vibrate: [200, 100, 200]
+        } as any;
+
+        // Fallback robusto de Service Worker para permitir execução real em segundo plano no celular
+        if ("serviceWorker" in navigator && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification(title, notifOptions).catch(() => {
+              new Notification(title, { body });
+            });
+          });
+        } else {
+          new Notification(title, { body });
+        }
       }
     }
   };
@@ -953,6 +1048,16 @@ export default function App() {
               onChange={setConfigAcessibilidade}
             />
 
+            {/* Requisito: Possibilidade do usuário baixar no celular o sistema */}
+            <button
+              onClick={handlePwaInstallClick}
+              className="bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-extrabold px-3 py-2 rounded-xl text-[10px] uppercase flex items-center space-x-1.5 shadow transition-all duration-150 cursor-pointer self-center"
+              title="Instalar Manutech no Celular ou Desktop (PWA)"
+            >
+              <span className="text-[11px]">📲</span>
+              <span>Baixar App</span>
+            </button>
+
             {/* Data/Hora de Trabalho em tempo real */}
             <div className="hidden xl:block text-right border-l border-slate-100 pl-4">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest leading-none">Relógio Técnico</p>
@@ -1188,9 +1293,40 @@ export default function App() {
               </div>
               <button 
                 onClick={() => setShowPhoneWidget(false)}
-                className="text-[9px] bg-slate-800 hover:bg-slate-705 font-bold px-2 py-1 rounded-lg text-slate-300 transition"
+                className="text-[9px] bg-slate-800 hover:bg-slate-700 font-bold px-2 py-1 rounded-lg text-slate-300 transition"
               >
                 Minimizar
+              </button>
+            </div>
+
+            {/* Ativador de Notificações Reais no Celular Físico */}
+            <div className="bg-purple-950/45 border-b border-slate-800 px-3 py-2 flex items-center justify-between shrink-0 text-left">
+              <div className="space-y-0.5">
+                <span className="text-[8px] font-black text-purple-400 uppercase tracking-widest block leading-none">Notificações Reais</span>
+                <span className="text-[7px] text-slate-300 block leading-tight">
+                  {realNotifStatus === "granted" ? "🔔 Ativas no aparelho real" : "🔕 Desconectadas no dispositivo"}
+                </span>
+              </div>
+              {realNotifStatus !== "granted" ? (
+                <button
+                  onClick={requestRealNotificationPermission}
+                  className="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-[7.5px] font-black uppercase px-2 py-1 rounded-md transition cursor-pointer"
+                >
+                  Conectar
+                </button>
+              ) : (
+                <span className="text-emerald-400 font-extrabold text-[8px] uppercase tracking-wider">Conectado</span>
+              )}
+            </div>
+
+            {/* Banner de Instalação PWA Real */}
+            <div className="bg-slate-900 border-b border-slate-800/80 px-3 py-1.5 flex items-center justify-between shrink-0 text-left">
+              <span className="text-[7.5px] text-slate-300 leading-none">Deseja fixar o sistema no celular comercial?</span>
+              <button
+                onClick={handlePwaInstallClick}
+                className="bg-purple-700 hover:bg-purple-650 text-white text-[7.5px] font-bold uppercase px-2 py-1 rounded-md transition cursor-pointer"
+              >
+                Instalar
               </button>
             </div>
 

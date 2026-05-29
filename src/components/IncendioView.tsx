@@ -150,6 +150,29 @@ export const IncendioView: React.FC<Props> = ({
     return { total, aprovados, vencidos, recarga, criticos };
   }, [lista]);
 
+  // Gráfico de Barras - Contagem por setor com status 'Vencido' ou 'Necessita Carga'
+  const graficoDados = useMemo(() => {
+    const setoresMap: Record<string, { setor: string; vencidos: number; necessitamCarga: number; total: number }> = {};
+    
+    lista.forEach(item => {
+      const setor = item.setor || "Outras divisões";
+      if (!setoresMap[setor]) {
+        setoresMap[setor] = { setor, vencidos: 0, necessitamCarga: 0, total: 0 };
+      }
+      if (item.statusGeral === "Vencido") {
+        setoresMap[setor].vencidos += 1;
+        setoresMap[setor].total += 1;
+      } else if (item.statusGeral === "Necessita Carga") {
+        setoresMap[setor].necessitamCarga += 1;
+        setoresMap[setor].total += 1;
+      }
+    });
+
+    const val = Object.values(setoresMap);
+    // Ordena do que tem mais problemas para o que tem menos
+    return val.sort((a, b) => b.total - a.total);
+  }, [lista]);
+
   // Filtragem
   const itensFiltrados = useMemo(() => {
     let res = lista;
@@ -366,6 +389,137 @@ export const IncendioView: React.FC<Props> = ({
             <span className="block text-xl font-extrabold text-red-200 mt-1">{stats.criticos} interd.</span>
           </div>
         </div>
+      </div>
+
+      {/* Gráfico de Barras - Resumo de Dispositivos Críticos Contra Incêndio */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div className="border-b border-slate-105 pb-3">
+          <h3 className="font-extrabold text-slate-900 text-sm md:text-base flex items-center space-x-2">
+            <ShieldAlert className="w-5 h-5 text-red-650 animate-pulse" />
+            <span>Painel de Alertas: Equipamentos Irregulares por Setor</span>
+          </h3>
+          <p className="text-slate-500 text-xs mt-1">
+            Contagem consolidada de dispositivos com carga <b>Vencida</b> ou que <b>Necessitam Recarga / Carga</b> (Baixa Pressão) por setor do SENAI.
+          </p>
+        </div>
+
+        {(() => {
+          const dadosComProblemas = graficoDados.filter(d => d.total > 0);
+          if (dadosComProblemas.length === 0) {
+            return (
+              <div className="flex flex-col items-center justify-center p-8 bg-emerald-50/40 rounded-2xl border border-emerald-100 text-center space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                <h4 className="text-xs font-bold text-slate-950 uppercase tracking-wider">Tudo em Plena Conformidade!</h4>
+                <p className="text-[11px] text-slate-500 max-w-sm">
+                  Nenhum extintor ou dispositivo contra incêndio com status 'Vencido' ou 'Necessita Carga' registrado no momento.
+                </p>
+              </div>
+            );
+          }
+
+          // Busca setor mais crítico
+          const maiorUrgenciaSetor = dadosComProblemas[0]?.setor || "Nenhum";
+          const maxTotal = Math.max(...dadosComProblemas.map(x => x.total), 1);
+
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              {/* Gráfico de Barras Horizontal */}
+              <div className="lg:col-span-8 space-y-4 self-center">
+                {dadosComProblemas.map((d) => {
+                  // Proporção baseada no valor máximo registrado
+                  const pctVencido = (d.vencidos / maxTotal) * 100;
+                  const pctRecarga = (d.necessitamCarga / maxTotal) * 100;
+
+                  return (
+                    <div key={d.setor} className="space-y-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-slate-800 truncate pr-4 max-w-[250px] md:max-w-md" title={d.setor}>
+                          {d.setor}
+                        </span>
+                        <span className="font-semibold text-slate-500 shrink-0">
+                          Total: <span className="text-red-650 font-black">{d.total}</span> (
+                          <span className="text-rose-600 font-bold">{d.vencidos} venc.</span> +{" "}
+                          <span className="text-amber-600 font-bold">{d.necessitamCarga} carga</span>)
+                        </span>
+                      </div>
+                      
+                      {/* Barra Empilhada Customizada com Tailwind */}
+                      <div className="h-5.5 bg-slate-100 rounded-lg overflow-hidden flex relative border border-slate-200/60 shadow-inner">
+                        {d.vencidos > 0 && (
+                          <div 
+                            style={{ width: `${pctVencido}%` }}
+                            className="bg-red-600 flex items-center justify-center text-[9px] text-white font-black uppercase tracking-wider transition-all duration-300 hover:opacity-90 leading-none h-full"
+                            title={`${d.vencidos} Extintor(es) Vencido(s)`}
+                          >
+                            {pctVencido > 18 && `VENCIDO (${d.vencidos})`}
+                          </div>
+                        )}
+                        {d.necessitamCarga > 0 && (
+                          <div 
+                            style={{ width: `${pctRecarga}%` }}
+                            className="bg-amber-500 flex items-center justify-center text-[9px] text-slate-950 font-black uppercase tracking-wider transition-all duration-300 hover:opacity-90 leading-none h-full"
+                            title={`${d.necessitamCarga} Equipamento(s) com Pressão Baixa / Carga pendente`}
+                          >
+                            {pctRecarga > 18 && `REC. CARGA (${d.necessitamCarga})`}
+                          </div>
+                        )}
+                        
+                        {/* Se a porcentagem total for muito curta para texto interno */}
+                        {(pctVencido <= 18 && d.vencidos > 0) && (
+                          <span className="absolute left-1.5 top-1 text-[8.5px] font-black text-red-950">V:{d.vencidos}</span>
+                        )}
+                        {(pctRecarga <= 18 && d.necessitamCarga > 0) && (
+                          <span className="absolute right-1.5 top-1 text-[8.5px] font-black text-amber-950">C:{d.necessitamCarga}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Box KPI Consolidado */}
+              <div className="lg:col-span-4 bg-slate-50 p-4.5 rounded-2xl border border-slate-200 flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">KPI Analítico da Brigada</h4>
+                  
+                  <div>
+                    <span className="text-[11px] text-slate-500 block leading-tight">Setor Crítico com maior Necessidade:</span>
+                    <span className="text-xs font-black text-slate-900 block truncate mt-1 bg-red-50 text-red-750 px-2.5 py-1.5 rounded-lg border border-red-100">
+                      ⚠️ {maiorUrgenciaSetor}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[11px] text-slate-500 block">Total de Dispositivos Regulares:</span>
+                    <span className="text-base font-bold text-emerald-600 block mt-0.5">
+                      {stats.aprovados} de {stats.total} itens em conformidade
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[11px] text-slate-500 block">Status consolidado dos alertas:</span>
+                    <span className="text-lg font-black text-red-650 flex items-center space-x-1.5 mt-1">
+                      <span>🎯</span>
+                      <span>{lista.filter(i => i.statusGeral === "Vencido").length} Itens Vencidos</span>
+                    </span>
+                    <p className="text-[10px] text-slate-400 mt-1 select-all leading-normal">
+                      Atenção: Os extintores marcados como 'Vencidos' ou com manômetro em 'Baixa' necessitam de abertura imediata de Correção de O.S. regulamentar.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-205 flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-[8.5px] font-extrabold uppercase tracking-widest text-slate-500">
+                    <span className="w-2.5 h-2.5 bg-red-650 rounded-xs"></span>
+                    <span>Vencido</span>
+                    <span className="w-2.5 h-2.5 bg-amber-500 rounded-xs ml-2"></span>
+                    <span>Necessita Carga</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Formulário de cadastro de novo equipamento */}
