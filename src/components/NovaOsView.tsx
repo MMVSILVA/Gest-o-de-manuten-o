@@ -5,20 +5,23 @@
 
 import React, { useState } from "react";
 import { Sparkles } from "lucide-react";
-import { OrdemServico, Colaborador } from "../types";
+import { OrdemServico, Colaborador, Equipamento } from "../types";
 
 interface Props {
   colaboradorLogado: Colaborador | null;
   onNavigate: (view: any) => void;
   onCriarOS: (nova: Omit<OrdemServico, 'id' | 'data' | 'timestamp'>) => void;
+  equipamentos: Equipamento[];
 }
 
 export const NovaOsView: React.FC<Props> = ({
   colaboradorLogado,
   onNavigate,
-  onCriarOS
+  onCriarOS,
+  equipamentos = []
 }) => {
   const [equipamento, setEquipamento] = useState("");
+  const [escreverManualmente, setEscreverManualmente] = useState(false);
   const [solicitante, setSolicitante] = useState(colaboradorLogado ? colaboradorLogado.nome : "");
   const [tipo, setTipo] = useState<OrdemServico['tipo']>("Preventiva");
   const [prioridade, setPrioridade] = useState<OrdemServico['prioridade']>("Média");
@@ -91,14 +94,55 @@ export const NovaOsView: React.FC<Props> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-[10px] font-extrabold text-slate-700 uppercase tracking-widest mb-1.5">Equipamento / Ativo *</label>
-              <input
-                required
-                type="text"
-                value={equipamento}
-                onChange={e => setEquipamento(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm bg-slate-50"
-                placeholder="Ex: Torno Romi T-14"
-              />
+              {!escreverManualmente ? (
+                <div className="space-y-2">
+                  <select
+                    required
+                    value={equipamento}
+                    onChange={e => {
+                      if (e.target.value === "__WRITE_MANUAL__") {
+                        setEscreverManualmente(true);
+                        setEquipamento("");
+                      } else {
+                        setEquipamento(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm bg-white"
+                  >
+                    <option value="">Selecione um equipamento...</option>
+                    {equipamentos.map(eq => (
+                      <option key={eq.id} value={eq.nome}>
+                        {eq.nome} &nbsp; ({eq.modelo} - {eq.setor})
+                      </option>
+                    ))}
+                    <option value="__WRITE_MANUAL__">✍️ Outro (Escrever manualmente...)</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      required
+                      type="text"
+                      value={equipamento}
+                      onChange={e => setEquipamento(e.target.value)}
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm bg-slate-50 flex-1"
+                      placeholder="Ex: Torno Romi T-14"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEscreverManualmente(false);
+                        setEquipamento("");
+                      }}
+                      className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer shrink-0 border border-slate-200"
+                      title="Voltar para a seleção por lista"
+                    >
+                      Ver Lista
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-[10px] font-extrabold text-slate-700 uppercase tracking-widest mb-1.5">Solicitante Técnico *</label>

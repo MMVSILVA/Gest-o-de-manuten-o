@@ -694,6 +694,15 @@ export default function App() {
     }
   };
 
+  const handleExcluirEquipamento = (id: string) => {
+    setEquipamentos(prev => prev.filter(e => e.id !== id));
+    setEqSelecionadoId(null);
+    if (!navigator.onLine) {
+      queueOfflineAction("EXCLUIR_EQUIPAMENTO", id);
+    }
+    alert("Equipamento excluído com sucesso do inventário de ativos!");
+  };
+
   // Simular Falha de Urgência
   const handleSimularFalha = () => {
     // Ativa simulador IoT
@@ -1164,6 +1173,7 @@ export default function App() {
               colaboradorLogado={colaboradorLogado}
               onNavigate={setActiveView}
               onCriarOS={handleCriarOS}
+              equipamentos={equipamentos}
             />
           )}
 
@@ -1216,6 +1226,7 @@ export default function App() {
           onBack={() => setEqSelecionadoId(null)}
           onUpdateEquipamento={handleUpdateEquipamento}
           onShowImageFull={setImageFullSrc}
+          onExcluirEquipamento={handleExcluirEquipamento}
         />
       )}
 

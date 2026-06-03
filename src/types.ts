@@ -21,6 +21,12 @@ export interface DefeitoFoto {
   data: string;
 }
 
+export interface GrupoPeca {
+  id: string;
+  nome: string; // e.g. "Sistema de Transmissão", "Parte Elétrica"
+  pecas: string[]; // e.g. ["Rolamento de Agulhas", "Servo Motor AC"]
+}
+
 export interface Equipamento {
   id: string;
   nome: string;
@@ -35,6 +41,7 @@ export interface Equipamento {
     [key: string]: string | undefined;
   };
   fotos: DefeitoFoto[];
+  gruposPecas?: GrupoPeca[];
 }
 
 export interface OrdemServico {

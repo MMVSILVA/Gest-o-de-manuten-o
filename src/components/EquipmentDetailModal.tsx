@@ -8,9 +8,10 @@ import {
   X, ArrowLeft, Server, FileText, CheckCircle, UploadCloud, Eye, BookOpen, 
   PlayCircle, Camera, Sparkles, Wand2, BrainCircuit, Printer,
   ChevronLeft, ChevronRight, PlusCircle, MinusCircle,
-  Clock, Calendar, AlertTriangle, Activity, UserCheck
+  Clock, Calendar, AlertTriangle, Activity, UserCheck,
+  ChevronDown, ChevronUp, Trash2, Edit3, Save, RotateCcw, Wrench
 } from "lucide-react";
-import { Equipamento, OrdemServico, Colaborador, DefeitoFoto } from "../types";
+import { Equipamento, OrdemServico, Colaborador, DefeitoFoto, GrupoPeca } from "../types";
 
 interface Props {
   eq: Equipamento;
@@ -19,6 +20,7 @@ interface Props {
   onBack: () => void;
   onUpdateEquipamento: (updated: Equipamento) => void;
   onShowImageFull: (src: string) => void;
+  onExcluirEquipamento?: (id: string) => void;
 }
 
 export const EquipmentDetailModal: React.FC<Props> = ({
@@ -27,16 +29,30 @@ export const EquipmentDetailModal: React.FC<Props> = ({
   colaboradorLogado,
   onBack,
   onUpdateEquipamento,
-  onShowImageFull
+  onShowImageFull,
+  onExcluirEquipamento
 }) => {
   const [nomeInterno, setNomeInterno] = useState(eq.nome);
   const [sintomasIA, setSintomasIA] = useState("");
-  const [abaAtiva, setAbaAtiva] = useState<'docs-ia' | 'historico'>('docs-ia');
+  const [abaAtiva, setAbaAtiva] = useState<'docs-ia' | 'historico' | 'pecas'>('docs-ia');
   const [parecerIA, setParecerIA] = useState("");
   const [carregandoIA, setCarregandoIA] = useState(false);
   const [modalQR, setModalQR] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
+
+  // States para Edição Completa (Gestor)
+  const [isEditing, setIsEditing] = useState(false);
+  const [editNome, setEditNome] = useState(eq.nome);
+  const [editModelo, setEditModelo] = useState(eq.modelo);
+  const [editSetor, setEditSetor] = useState(eq.setor);
+  const [editStatus, setEditStatus] = useState(eq.status);
+  const [editResponsavel, setEditResponsavel] = useState(eq.responsavel);
+
+  // States para Divisão de Grupos de Peças
+  const [gruposExpandidos, setGruposExpandidos] = useState<Record<string, boolean>>({});
+  const [novoGrupoNome, setNovoGrupoNome] = useState("");
+  const [novaPecaNome, setNovaPecaNome] = useState<Record<string, string>>({}); // gp_id -> peca_nome
 
   // Filtra as O.S. correspondentes a esta máquina
   const historicoOS = ordens.filter(o => 
@@ -49,6 +65,99 @@ export const EquipmentDetailModal: React.FC<Props> = ({
     onUpdateEquipamento({
       ...eq,
       nome: nomeInterno.trim()
+    });
+  };
+
+  // Funções de Edição Completa para Gestor
+  const handleSalvarEdicaoCompleta = () => {
+    if (!editNome.trim()) {
+      alert("O nome do equipamento é obrigatório para atualização.");
+      return;
+    }
+    onUpdateEquipamento({
+      ...eq,
+      nome: editNome.trim(),
+      modelo: editModelo.trim() || "N/A",
+      setor: editSetor.trim(),
+      status: editStatus,
+      responsavel: editResponsavel.trim() || "Geral"
+    });
+    setIsEditing(false);
+  };
+
+  const handleExcluirEquipamentoInterno = () => {
+    if (window.confirm(`Deseja realmente excluir permanentemente o equipamento "${eq.nome}"? Esta ação interromperá todo o rastreamento técnico do ativo!`)) {
+      if (onExcluirEquipamento) {
+        onExcluirEquipamento(eq.id);
+      } else {
+        alert("Erro ao excluir: Callback de exclusão não definido.");
+      }
+    }
+  };
+
+  // Funções de Gestão de Grupos de Peças e Peças
+  const handleAdicionarGrupoPeca = () => {
+    if (!novoGrupoNome.trim()) return;
+    const novoGP: GrupoPeca = {
+      id: "gp_" + Date.now(),
+      nome: novoGrupoNome.trim(),
+      pecas: []
+    };
+    const nextGrupos = [...(eq.gruposPecas || []), novoGP];
+    onUpdateEquipamento({
+      ...eq,
+      gruposPecas: nextGrupos
+    });
+    setNovoGrupoNome("");
+    setGruposExpandidos(prev => ({ ...prev, [novoGP.id]: true }));
+  };
+
+  const handleRemoverGrupoPeca = (gpId: string) => {
+    if (window.confirm("Deseja realmente remover este grupo de peças por completo?")) {
+      const nextGrupos = (eq.gruposPecas || []).filter(g => g.id !== gpId);
+      onUpdateEquipamento({
+        ...eq,
+        gruposPecas: nextGrupos
+      });
+    }
+  };
+
+  const handleAdicionarPeca = (gpId: string) => {
+    const nomePeca = novaPecaNome[gpId]?.trim();
+    if (!nomePeca) return;
+
+    const nextGrupos = (eq.gruposPecas || []).map(g => {
+      if (g.id === gpId) {
+        return {
+          ...g,
+          pecas: [...g.pecas, nomePeca]
+        };
+      }
+      return g;
+    });
+
+    onUpdateEquipamento({
+      ...eq,
+      gruposPecas: nextGrupos
+    });
+
+    setNovaPecaNome(prev => ({ ...prev, [gpId]: "" }));
+  };
+
+  const handleRemoverPeca = (gpId: string, pecaIndex: number) => {
+    const nextGrupos = (eq.gruposPecas || []).map(g => {
+      if (g.id === gpId) {
+        return {
+          ...g,
+          pecas: g.pecas.filter((_, idx) => idx !== pecaIndex)
+        };
+      }
+      return g;
+    });
+
+    onUpdateEquipamento({
+      ...eq,
+      gruposPecas: nextGrupos
     });
   };
 
@@ -174,35 +283,140 @@ export const EquipmentDetailModal: React.FC<Props> = ({
             <div className="lg:col-span-5 space-y-6">
               
               {/* Box de Status do Ativo */}
-              <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm space-y-4">
-                <div className="flex justify-between items-start">
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm space-y-4">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                   <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Informações Técnicas</h4>
-                  <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                    eq.status === 'Operacional' 
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
-                      : eq.status === 'Em Manutenção' 
-                        ? 'bg-amber-50 text-amber-700 border-amber-100' 
-                        : 'bg-red-50 text-red-700 border-red-100'
-                  }`}>
-                    {eq.status}
-                  </span>
+                  {!isEditing && (
+                    <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                      eq.status === 'Operacional' 
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                        : eq.status === 'Em Manutenção' 
+                          ? 'bg-amber-50 text-amber-700 border-amber-100' 
+                          : 'bg-red-50 text-red-700 border-red-100'
+                    }`}>
+                      {eq.status}
+                    </span>
+                  )}
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs text-slate-500 border-b border-slate-100 pb-1.5">
-                    <span>Modelo:</span>
-                    <span className="font-bold text-slate-800">{eq.modelo}</span>
+                {isEditing ? (
+                  <div className="space-y-3 animate-in fade-in duration-150">
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Nome do Equipamento</label>
+                      <input 
+                        type="text" 
+                        value={editNome} 
+                        onChange={e => setEditNome(e.target.value)} 
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Modelo</label>
+                      <input 
+                        type="text" 
+                        value={editModelo} 
+                        onChange={e => setEditModelo(e.target.value)} 
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Setor / Localização</label>
+                      <input 
+                        type="text" 
+                        value={editSetor} 
+                        onChange={e => setEditSetor(e.target.value)} 
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Líder Responsável</label>
+                      <input 
+                        type="text" 
+                        value={editResponsavel} 
+                        onChange={e => setEditResponsavel(e.target.value)} 
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Status Operacional</label>
+                      <select 
+                        value={editStatus} 
+                        onChange={e => setEditStatus(e.target.value as any)} 
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold cursor-pointer"
+                      >
+                        <option value="Operacional">Operacional</option>
+                        <option value="Em Manutenção">Em Manutenção</option>
+                        <option value="Crítico">Crítico</option>
+                      </select>
+                    </div>
+
+                    <div className="flex space-x-2 pt-2">
+                      <button
+                        onClick={handleSalvarEdicaoCompleta}
+                        className="p-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1 cursor-pointer flex-1 justify-center shadow"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>Salvar</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditNome(eq.nome);
+                          setEditModelo(eq.modelo);
+                          setEditSetor(eq.setor);
+                          setEditResponsavel(eq.responsavel);
+                          setEditStatus(eq.status);
+                          setIsEditing(false);
+                        }}
+                        className="p-1.5 px-3 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center space-x-1 cursor-pointer flex-1 justify-center"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Cancelar</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-xs text-slate-500 border-b border-slate-100 pb-1.5">
-                    <span>Setor/Localização:</span>
-                    <span className="font-bold text-slate-800">{eq.setor}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-slate-500 border-b border-slate-100 pb-1.5">
-                    <span>Instalações Líder:</span>
-                    <span className="font-bold text-slate-800">{eq.responsavel}</span>
-                  </div>
-                  
-                  {/* Visualização de QR Code */}
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs text-slate-500 border-b border-slate-100 pb-1.5">
+                      <span>Modelo:</span>
+                      <span className="font-bold text-slate-800">{eq.modelo}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-500 border-b border-slate-100 pb-1.5">
+                      <span>Setor/Localização:</span>
+                      <span className="font-bold text-slate-800">{eq.setor}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-500 border-b border-slate-100 pb-1.5">
+                      <span>Instalações Líder:</span>
+                      <span className="font-bold text-slate-800">{eq.responsavel}</span>
+                    </div>
+
+                    {/* Botões de Ação Exclusivos do Gestor */}
+                    {colaboradorLogado?.cargo === 'Gestor' && (
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                        <button
+                          onClick={() => {
+                            setEditNome(eq.nome);
+                            setEditModelo(eq.modelo);
+                            setEditSetor(eq.setor);
+                            setEditResponsavel(eq.responsavel);
+                            setEditStatus(eq.status);
+                            setIsEditing(true);
+                          }}
+                          className="py-1.5 bg-blue-50 hover:bg-blue-105 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center space-x-1 transition cursor-pointer border border-blue-100"
+                        >
+                          <Edit3 className="w-3 h-3 text-blue-500" />
+                          <span>Editar</span>
+                        </button>
+                        <button
+                          onClick={handleExcluirEquipamentoInterno}
+                          className="py-1.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center space-x-1 transition cursor-pointer border border-red-100"
+                        >
+                          <Trash2 className="w-3 h-3 text-red-500" />
+                          <span>Excluir</span>
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Visualização de QR Code */}
                   <div className="pt-2 text-center">
                     <button
                       onClick={() => setModalQR(true)}
@@ -217,9 +431,10 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                     </button>
                   </div>
                 </div>
-              </div>
+              )}
+            </div>
 
-              {/* Histórico Recorrente de Ordens de Serviço */}
+            {/* Histórico Recorrente de Ordens de Serviço */}
               <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Atividades Vinculadas</h4>
@@ -271,10 +486,10 @@ export const EquipmentDetailModal: React.FC<Props> = ({
               
               <div>
                 {/* Abas Superiores da Coluna Direita */}
-                <div className="flex border-b border-slate-200 mb-5">
+                <div className="flex border-b border-slate-200 mb-5 overflow-x-auto whitespace-nowrap scrollbar-none">
                   <button
                     onClick={() => setAbaAtiva('docs-ia')}
-                    className={`pb-2.5 text-xs font-bold uppercase tracking-wider transition border-b-2 mr-6 flex items-center space-x-1.5 cursor-pointer ${
+                    className={`pb-2.5 text-xs font-bold uppercase tracking-wider transition border-b-2 mr-6 flex items-center space-x-1.5 cursor-pointer shrink-0 ${
                       abaAtiva === 'docs-ia' 
                         ? 'border-blue-600 text-blue-600' 
                         : 'border-transparent text-slate-400 hover:text-slate-650'
@@ -283,9 +498,10 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                     <Sparkles className="w-4 h-4 text-inherit" />
                     <span>Conformidade & IA</span>
                   </button>
+                  
                   <button
                     onClick={() => setAbaAtiva('historico')}
-                    className={`pb-2.5 text-xs font-bold uppercase tracking-wider transition border-b-2 flex items-center space-x-1.5 cursor-pointer relative ${
+                    className={`pb-2.5 text-xs font-bold uppercase tracking-wider transition border-b-2 mr-6 flex items-center space-x-1.5 cursor-pointer shrink-0 relative ${
                       abaAtiva === 'historico' 
                         ? 'border-blue-600 text-blue-600' 
                         : 'border-transparent text-slate-400 hover:text-slate-650'
@@ -297,9 +513,24 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                       {historicoOS.length}
                     </span>
                   </button>
+
+                  <button
+                    onClick={() => setAbaAtiva('pecas')}
+                    className={`pb-2.5 text-xs font-bold uppercase tracking-wider transition border-b-2 flex items-center space-x-1.5 cursor-pointer shrink-0 relative ${
+                      abaAtiva === 'pecas' 
+                        ? 'border-blue-600 text-blue-600' 
+                        : 'border-transparent text-slate-400 hover:text-slate-650'
+                    }`}
+                  >
+                    <Wrench className="w-4 h-4 text-inherit" />
+                    <span>Grupo de Peças</span>
+                    <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 border border-slate-200">
+                      {(eq.gruposPecas || []).length}
+                    </span>
+                  </button>
                 </div>
 
-                {abaAtiva === 'docs-ia' ? (
+                {abaAtiva === 'docs-ia' && (
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div>
                       <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3">Documentação de Conformidade</h4>
@@ -485,7 +716,9 @@ export const EquipmentDetailModal: React.FC<Props> = ({
 
                     </div>
                   </div>
-                ) : (
+                )}
+
+                {abaAtiva === 'historico' && (
                   /* LINHA DO TEMPO VERTICAL do Histórico Completo de Intervenções Pastas */
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="border-b pb-3 border-slate-155 pb-1 mb-2">
@@ -570,6 +803,156 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                                   </div>
                                 </div>
                               </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {abaAtiva === 'pecas' && (
+                  <div className="space-y-6 animate-in fade-in duration-250">
+                    <div className="border-b pb-3 border-slate-200">
+                      <h4 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
+                        <Wrench className="w-4 h-4 text-blue-600" />
+                        <span>Mapeamento de Peças & Componentes</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Divisão estrutural dos subgrupos e sobressalentes vinculados ao ativo para rapidez diagnóstica e auditoria.
+                      </p>
+                    </div>
+
+                    {/* Cadastrar Novo Grupo de Peças (Disponível para Gestores / Técnicos) */}
+                    {(colaboradorLogado?.cargo === 'Gestor' || colaboradorLogado?.cargo === 'Técnico') && (
+                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                        <label className="block text-[9px] font-black text-slate-500 uppercase tracking-wider">Criar Novo Grupo Mecânico</label>
+                        <div className="flex space-x-2">
+                          <input 
+                            type="text"
+                            placeholder="Ex: Sistema Hidráulico, Transmissão por Polia..."
+                            value={novoGrupoNome}
+                            onChange={e => setNovoGrupoNome(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleAdicionarGrupoPeca(); }}
+                            className="flex-1 px-3 py-1.5 border rounded-lg text-xs bg-white text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <button
+                            onClick={handleAdicionarGrupoPeca}
+                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shrink-0 cursor-pointer"
+                          >
+                            + Criar Grupo
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Lista Suspeita/Suspensa de Grupos Cadastrados (Acordeão) */}
+                    {(!eq.gruposPecas || eq.gruposPecas.length === 0) ? (
+                      <div className="text-center py-10 bg-slate-50/50 border border-dashed border-slate-200 rounded-xl p-5">
+                        <Activity className="w-8 h-8 text-slate-300 mx-auto mb-2 animate-pulse" />
+                        <h5 className="font-bold text-xs text-slate-700">Nenhum grupo de peças cadastrado</h5>
+                        <p className="text-[10px] text-slate-500 mt-1">Crie um grupo acima para começar a mapear as peças internas que compõem este equipamento.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {eq.gruposPecas.map((grupo) => {
+                          const isExpandido = !!gruposExpandidos[grupo.id];
+                          return (
+                            <div key={grupo.id} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
+                              
+                              {/* Elemento de Gatilho / Header com lista suspensa */}
+                              <div 
+                                onClick={() => {
+                                  setGruposExpandidos(prev => ({ ...prev, [grupo.id]: !isExpandido }));
+                                }}
+                                className="flex items-center justify-between p-3.5 bg-slate-50/50 hover:bg-slate-50 cursor-pointer select-none transition border-b border-transparent"
+                              >
+                                <div className="flex items-center space-x-2 flex-grow">
+                                  {isExpandido ? (
+                                    <ChevronUp className="w-4 h-4 text-slate-500 shrink-0" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />
+                                  )}
+                                  <span className="font-extrabold text-xs text-slate-800 uppercase tracking-wide">{grupo.nome}</span>
+                                  <span className="font-mono text-[9px] text-slate-400 bg-slate-100 p-1 px-1.5 rounded-full border">
+                                    {grupo.pecas.length} {grupo.pecas.length === 1 ? 'peça' : 'peças'}
+                                  </span>
+                                </div>
+
+                                {/* Botão exclusão de grupo para Gestores */}
+                                {colaboradorLogado?.cargo === 'Gestor' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Evita expandir/retrair a linha ao clique
+                                      handleRemoverGrupoPeca(grupo.id);
+                                    }}
+                                    className="p-1 hover:bg-red-50 text-slate-450 hover:text-red-600 rounded transition shrink-0 cursor-pointer"
+                                    title="Excluir este grupo"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Conteúdo Expansível (Lista Suspensa que abre com as peças) */}
+                              {isExpandido && (
+                                <div className="p-4 bg-white space-y-3 border-t border-slate-100 animate-in slide-in-from-top-2 duration-150">
+                                  
+                                  {/* Sublista de peças */}
+                                  {grupo.pecas.length === 0 ? (
+                                    <p className="text-xs text-slate-400 italic">Sem peças cadastradas nesta seção de componentes.</p>
+                                  ) : (
+                                    <ul className="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden">
+                                      {grupo.pecas.map((peca, idx) => (
+                                        <li key={idx} className="flex items-center justify-between p-2 px-3 hover:bg-slate-50/40 text-xs">
+                                          <div className="flex items-center space-x-2 text-slate-700">
+                                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full shrink-0" />
+                                            <span className="font-medium">{peca}</span>
+                                          </div>
+                                          
+                                          {/* Excluir Peça */}
+                                          {colaboradorLogado?.cargo === 'Gestor' && (
+                                            <button
+                                              onClick={() => handleRemoverPeca(grupo.id, idx)}
+                                              className="p-0.5 text-slate-350 hover:text-red-500 transition cursor-pointer"
+                                              title="Excluir Peça"
+                                            >
+                                              <X className="w-3.5 h-3.5" />
+                                            </button>
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+
+                                  {/* Input para adicionar peça (Gestores e Técnicos) */}
+                                  {(colaboradorLogado?.cargo === 'Gestor' || colaboradorLogado?.cargo === 'Técnico') && (
+                                    <div className="flex items-center space-x-2 pt-2 border-t border-dashed border-slate-100">
+                                      <input 
+                                        type="text"
+                                        placeholder="Nova peça (ex: Rolamento SKF 6204)..."
+                                        value={novaPecaNome[grupo.id] || ""}
+                                        onChange={e => {
+                                          const val = e.target.value;
+                                          setNovaPecaNome(prev => ({ ...prev, [grupo.id]: val }));
+                                        }}
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter') handleAdicionarPeca(grupo.id);
+                                        }}
+                                        className="flex-1 px-3 py-1.5 border border-slate-200 bg-slate-50 rounded-lg text-xs focus:outline-none text-slate-800"
+                                      />
+                                      <button
+                                        onClick={() => handleAdicionarPeca(grupo.id)}
+                                        className="py-1.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold transition cursor-pointer shrink-0"
+                                      >
+                                        + Adicionar
+                                      </button>
+                                    </div>
+                                  )}
+
+                                </div>
+                              )}
+
                             </div>
                           );
                         })}

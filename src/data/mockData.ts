@@ -29,7 +29,12 @@ export const EQUIPAMENTOS_PADRAO: Equipamento[] = [
     status: "Operacional",
     responsavel: "Letícia Cabral",
     docs: {},
-    fotos: []
+    fotos: [],
+    gruposPecas: [
+      { id: "gp1_1", nome: "⚡ Painel Elétrico e CNC", pecas: ["Módulo PLC Siemens S7", "Disjuntor Bipolar 20A", "Contatores de Potência", "Fonte de Alimentação 24V DC"] },
+      { id: "gp1_2", nome: "⚙️ Cabeçote Spindle e Fuso", pecas: ["Rolamentos Superprecisão Axial", "Motor de Indução 7.5HP", "Cone de Fixação BT40", "Retentores Viton"] },
+      { id: "gp1_3", nome: "🛣️ Eixos Lineares (X, Y, Z)", pecas: ["Guias Lineares Retificadas", "Fuso de Esferas Recirculantes", "Servomotores Brushless Yaskawa", "Sensores de Fim de Curso Regulamentares"] }
+    ]
   },
   {
     id: "eq2",
@@ -39,7 +44,11 @@ export const EQUIPAMENTOS_PADRAO: Equipamento[] = [
     status: "Operacional",
     responsavel: "Nicole Caroline",
     docs: {},
-    fotos: []
+    fotos: [],
+    gruposPecas: [
+      { id: "gp2_1", nome: "💧 Sistema Hidráulico", pecas: ["Bomba Hidráulica de Palhetas", "Filtro de Retorno 10 Microns", "Válvulas Direcionais Solenoides", "Pistão de Translação Lateral"] },
+      { id: "gp2_2", nome: "🧲 Mesa Magnética de Fixação", pecas: ["Bobinas Eletromagnéticas Internas", "Chave Seletora Liga/Desliga", "Retificador de Corrente Integrado"] }
+    ]
   },
   {
     id: "eq3",
@@ -49,7 +58,11 @@ export const EQUIPAMENTOS_PADRAO: Equipamento[] = [
     status: "Operacional",
     responsavel: "Isabelle Nunes",
     docs: {},
-    fotos: []
+    fotos: [],
+    gruposPecas: [
+      { id: "gp3_1", nome: "⚙️ Caixa Norton de Engrenagens", pecas: ["Conjunto de Engrenagens Retas", "Eixo ranhurado Sem-fim", "Retentor Principal de Óleo", "Alavanca de Mudança de Passo"] },
+      { id: "gp3_2", nome: "🔩 Barramento e Placa Tratora", pecas: ["Placa de 3 Castanhas Autocentrantes", "Pinhões de Cremalheira", "Régua Cônica de Ajuste do Carro", "Parafuso Spindle do Escudo"] }
+    ]
   },
   {
     id: "eq4",
@@ -59,7 +72,11 @@ export const EQUIPAMENTOS_PADRAO: Equipamento[] = [
     status: "Em Manutenção",
     responsavel: "Maria Victória",
     docs: {},
-    fotos: []
+    fotos: [],
+    gruposPecas: [
+      { id: "gp4_1", nome: "🔴 Transmissão por Polia e Correia", pecas: ["Correia Trapezoidal A-34", "Polias Variadoras de Velocidade", "Mecanismo Tensionador do Motor", "Proteção de Chapa de Aço Contra Acidentes"] },
+      { id: "gp4_2", nome: "🔧 Eixo Árvore e Mandril", pecas: ["Mandril de Aperto Rápido 1/2\"", "Haste Cônica Morse 2", "Rolamentos de Rolos Cônicos Superior/Inferior"] }
+    ]
   },
   {
     id: "eq5",
@@ -69,7 +86,11 @@ export const EQUIPAMENTOS_PADRAO: Equipamento[] = [
     status: "Crítico",
     responsavel: "Nicole Caroline",
     docs: {},
-    fotos: []
+    fotos: [],
+    gruposPecas: [
+      { id: "gp5_1", nome: "📐 Guias e Volantes do Tensionador", pecas: ["Volante Tracionador Superior", "Volante Livre Inferior", "Guias Traseiros de Metal Duro (Vídea)", "Dispositivo de Mola Tensionadora de Fita"] },
+      { id: "gp5_2", nome: "🧴 Refrigeração de Corte", pecas: ["Bomba Centrifuga de Fluido", "Bocal Duplo Regulador de Vazão", "Reservatório de Fluido Solúvel"] }
+    ]
   },
   {
     id: "eq6",
@@ -79,7 +100,10 @@ export const EQUIPAMENTOS_PADRAO: Equipamento[] = [
     status: "Operacional",
     responsavel: "Equipe Geral",
     docs: {},
-    fotos: []
+    fotos: [],
+    gruposPecas: [
+      { id: "gp6_1", nome: "🔩 Mecanismo da Morsa Giratória", pecas: ["Mordentes Estriados de Aço Liga", "Parafuso Rosca Quadrada de Avanço", "Porca de Bronze Fundido Coaxial", "Base Rotativa Sincronizada 360°"] }
+    ]
   },
   {
     id: "eq7",
@@ -89,17 +113,25 @@ export const EQUIPAMENTOS_PADRAO: Equipamento[] = [
     status: "Operacional",
     responsavel: "Letícia Cabral",
     docs: {},
-    fotos: []
+    fotos: [],
+    gruposPecas: [
+      { id: "gp7_1", nome: "🌬️ Bloco Compressor Alternativo", pecas: ["Pistão e Anel Segmentador", "Válvulas Lamelares de Palheta", "Mancal Deslizante Bipartido", "Filtro Selador Anti-partícula"] },
+      { id: "gp7_2", nome: "🎛️ Dispositivos de Linha e Segurança", pecas: ["Pressostato de Operação Danfoss", "Válvula Reguladora de Pressão com Filtro", "Visor de Nível da Cuba de Lubrificante", "Purgador Mecânico de Purga Diária"] }
+    ]
   },
   {
-    id: "eq8",
+    id: "gp8_default",
     nome: "Esteira Industrial K2",
     modelo: "K2-Series",
     setor: "Automação",
     status: "Operacional",
     responsavel: "Isabelle Nunes",
     docs: {},
-    fotos: []
+    fotos: [],
+    gruposPecas: [
+      { id: "gp8_1", nome: "⚙️ Motoredutor e Acionamento", pecas: ["Motoredutor SEW Eurodrive Heloidal", "Rolo Tracionador Emborrachado", "Mancais Autocompensadores Terminais", "Corrente de Transmissão Dupla"] },
+      { id: "gp8_2", nome: "🏷️ Sensores e Lógica de Comando", pecas: ["Sensor Indutivo PNP M18", "Sensores Ópticos de Reflexão", "Módulo de Segurança Parada de Emergência", "Painel de Botoeiras Terminais"] }
+    ]
   }
 ];
 
