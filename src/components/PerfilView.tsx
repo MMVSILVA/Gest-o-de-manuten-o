@@ -53,7 +53,21 @@ export const PerfilView: React.FC<Props> = ({
             <span>{iniciaSigla}</span>
           </div>
           <h2 className="text-xl font-extrabold text-slate-900">{colaboradorLogado?.nome}</h2>
-          <p className="text-slate-400 text-xs mt-0.5 uppercase font-bold tracking-widest">{colaboradorLogado?.cargo}</p>
+          <div className="flex flex-col items-center justify-center space-y-1 mt-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase text-blue-700 bg-blue-50 border border-blue-100">
+              {colaboradorLogado?.cargo}
+            </span>
+            {colaboradorLogado?.cargoDetalhado && (
+              <span className="text-[11px] font-black tracking-wider text-slate-600 uppercase">
+                {colaboradorLogado.cargoDetalhado}
+              </span>
+            )}
+            {colaboradorLogado?.unidade && (
+              <span className="text-[9.5px] font-bold text-slate-400 bg-slate-50 border border-slate-200/50 px-2 py-0.5 rounded">
+                🏢 {colaboradorLogado.unidade}
+              </span>
+            )}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

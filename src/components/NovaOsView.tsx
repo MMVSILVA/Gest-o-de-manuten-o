@@ -12,15 +12,17 @@ interface Props {
   onNavigate: (view: any) => void;
   onCriarOS: (nova: Omit<OrdemServico, 'id' | 'data' | 'timestamp'>) => void;
   equipamentos: Equipamento[];
+  equipamentoPreSelecionado?: string | null;
 }
 
 export const NovaOsView: React.FC<Props> = ({
   colaboradorLogado,
   onNavigate,
   onCriarOS,
-  equipamentos = []
+  equipamentos = [],
+  equipamentoPreSelecionado
 }) => {
-  const [equipamento, setEquipamento] = useState("");
+  const [equipamento, setEquipamento] = useState(equipamentoPreSelecionado || "");
   const [escreverManualmente, setEscreverManualmente] = useState(false);
   const [solicitante, setSolicitante] = useState(colaboradorLogado ? colaboradorLogado.nome : "");
   const [tipo, setTipo] = useState<OrdemServico['tipo']>("Preventiva");

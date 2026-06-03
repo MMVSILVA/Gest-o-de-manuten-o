@@ -21,6 +21,7 @@ interface Props {
   onUpdateEquipamento: (updated: Equipamento) => void;
   onShowImageFull: (src: string) => void;
   onExcluirEquipamento?: (id: string) => void;
+  onAbrirNovaOs?: (nomeEquipamento: string) => void;
 }
 
 export const EquipmentDetailModal: React.FC<Props> = ({
@@ -30,7 +31,8 @@ export const EquipmentDetailModal: React.FC<Props> = ({
   onBack,
   onUpdateEquipamento,
   onShowImageFull,
-  onExcluirEquipamento
+  onExcluirEquipamento,
+  onAbrirNovaOs
 }) => {
   const [nomeInterno, setNomeInterno] = useState(eq.nome);
   const [sintomasIA, setSintomasIA] = useState("");
@@ -40,6 +42,7 @@ export const EquipmentDetailModal: React.FC<Props> = ({
   const [modalQR, setModalQR] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
+  const [ordemSelecionada, setOrdemSelecionada] = useState<OrdemServico | null>(null);
 
   // States para Edição Completa (Gestor)
   const [isEditing, setIsEditing] = useState(false);
@@ -461,12 +464,17 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                         </tr>
                       ) : (
                         historicoOS.map(os => (
-                          <tr key={os.id} className="hover:bg-slate-50/50 transition">
-                            <td className="px-3 py-2.5 font-mono text-slate-500">{os.data.split(" - ")[0]}</td>
+                          <tr 
+                            key={os.id} 
+                            onClick={() => setOrdemSelecionada(os)}
+                            className="hover:bg-blue-50/45 hover:text-blue-700 transition cursor-pointer"
+                            title="Clique para ver os detalhes completos desta Ordem de Serviço"
+                          >
+                            <td className="px-3 py-2.5 font-mono text-slate-500 font-medium">{os.data.split(" - ")[0]}</td>
                             <td className="px-3 py-2.5 font-bold">{os.tipo}</td>
                             <td className="px-3 py-2.5 shrink-0">
-                              <span className={`font-bold ${
-                                os.status === "Concluído" ? "text-emerald-600" : "text-amber-500"
+                              <span className={`font-black ${
+                                os.status === "Concluído" ? "text-emerald-700" : "text-amber-600"
                               }`}>
                                 {os.status}
                               </span>
@@ -477,6 +485,17 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                     </tbody>
                   </table>
                 </div>
+
+                {/* Botão de Atalho para Criar O.S. vinculada */}
+                {colaboradorLogado?.cargo !== "Instrutor" && onAbrirNovaOs && (
+                  <button
+                    onClick={() => onAbrirNovaOs(eq.nome)}
+                    className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 text-xs font-bold rounded-xl transition flex items-center justify-center space-x-1.5 cursor-pointer border border-blue-100/80 active:scale-98"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>Solicitar Manutenção para {eq.nome.split(" ")[0]}</span>
+                  </button>
+                )}
               </div>
 
             </div>
@@ -1115,6 +1134,95 @@ export const EquipmentDetailModal: React.FC<Props> = ({
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* Modal / Popup de Detalhes Completos de uma O.S específica de dentro do Ativo */}
+      {ordemSelecionada && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[80] p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-150 text-slate-800">
+            
+            {/* Header da O.S. no Ativo */}
+            <div className="bg-slate-900 p-4.5 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center space-x-2">
+                <FileText className="text-blue-400 w-4.5 h-4.5 shrink-0" />
+                <div>
+                  <h4 className="font-extrabold text-[12px] uppercase tracking-wider flex items-center space-x-1">
+                    <span>Ordem de Serviço</span>
+                    <span className="font-mono text-blue-400 font-bold">#{ordemSelecionada.id}</span>
+                  </h4>
+                  <p className="text-[9px] text-slate-400">Rastreabilidade integrada - Manutech SENAI</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setOrdemSelecionada(null)}
+                className="p-1 hover:bg-slate-850 rounded-lg text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Conteúdo Técnico */}
+            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto bg-slate-50/50 text-xs">
+              
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 shadow-xs">
+                  <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Informações do Ativo</span>
+                  <p className="text-[10px] text-slate-500">Máquina:</p>
+                  <p className="font-extrabold text-slate-900 bg-slate-50 p-1 rounded font-sans leading-tight border border-slate-100">{ordemSelecionada.equipamento}</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Solicitante:</p>
+                  <p className="font-bold text-slate-800">{ordemSelecionada.solicitante}</p>
+                </div>
+
+                <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 shadow-xs">
+                  <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Status & Nível</span>
+                  <p className="text-[10px] text-slate-500">Prioridade:</p>
+                  <p className="font-extrabold text-slate-800">{ordemSelecionada.prioridade}</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Status atual:</p>
+                  <div>
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                      ordemSelecionada.status === 'Concluído' ? 'bg-emerald-50 text-emerald-750 border border-emerald-200' : 'bg-amber-50 text-amber-750 border border-amber-200'
+                    }`}>
+                      {ordemSelecionada.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2 shadow-xs">
+                <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest">Sintomas / Laudo de Intervenção</span>
+                <p className="text-slate-800 whitespace-pre-line leading-relaxed font-sans bg-slate-50 p-3 rounded-lg border border-slate-200/60 font-medium">
+                  {ordemSelecionada.descricao}
+                </p>
+              </div>
+
+              {ordemSelecionada.status === 'Concluído' && ordemSelecionada.dataConclusao && (
+                <div className="bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl text-[10px] font-semibold text-emerald-800 flex justify-between items-center">
+                  <span>Conclusão homologada em:</span>
+                  <span className="font-mono font-bold text-emerald-700">{ordemSelecionada.dataConclusao}</span>
+                </div>
+              )}
+
+              <div className="bg-blue-50 border border-blue-105 p-3 rounded-xl text-[10px] flex items-start space-x-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
+                <div className="text-blue-850 leading-normal font-medium">
+                  <strong>NR-12 & NR-10:</strong> Atenda às normas regulamentadoras nacionais de segurança sob auditoria do gestor técnico.
+                </div>
+              </div>
+
+            </div>
+
+            {/* Rodapé */}
+            <div className="bg-slate-100 p-4 border-t border-slate-200 flex justify-end space-x-2">
+              <button
+                onClick={() => setOrdemSelecionada(null)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow transition cursor-pointer"
+              >
+                Voltar ao Ativo
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
 

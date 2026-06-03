@@ -237,7 +237,7 @@ export const LoginScreen: React.FC<Props> = ({
                   onClick={() => { preencherCredencial("1011", "alexandre123"); setMostrarSimulacao(false); }}
                   className="text-left bg-blue-950/40 hover:bg-slate-800 p-2 rounded border border-blue-800/60 transition cursor-pointer text-xs"
                 >
-                  <span className="font-semibold text-blue-450 block text-[9.5px]">ALEXANDRE RODRIGUES (Gestor de O.S.)</span>
+                  <span className="font-semibold text-blue-400 block text-[9.5px]">ALEXANDRE DA SILVA (Técnico Educação)</span>
                   Matrícula: <code className="text-slate-200 font-mono text-[10px]">1011</code> | Senha: <code className="text-slate-200 font-mono text-[10px]">alexandre123</code>
                 </button>
                 <button
@@ -245,7 +245,7 @@ export const LoginScreen: React.FC<Props> = ({
                   onClick={() => { preencherCredencial("1012", "wesley123"); setMostrarSimulacao(false); }}
                   className="text-left bg-emerald-950/40 hover:bg-slate-800 p-2 rounded border border-emerald-800/60 transition cursor-pointer text-xs"
                 >
-                  <span className="font-semibold text-emerald-450 block text-[9.5px]">WESLEY SILVA (Gestor de O.S.)</span>
+                  <span className="font-semibold text-emerald-400 block text-[9.5px]">WESLEY DE SOUZA FARIA (Técnico(a) Ed.)</span>
                   Matrícula: <code className="text-slate-200 font-mono text-[10px]">1012</code> | Senha: <code className="text-slate-200 font-mono text-[10px]">wesley123</code>
                 </button>
                 <button
@@ -416,20 +416,6 @@ export const LoginScreen: React.FC<Props> = ({
                         className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition text-sm bg-slate-50 hover:bg-slate-100/50 text-slate-800 font-medium"
                       />
                     </div>
-                  </div>
-
-                  {/* Cargo */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Cargo Regulamentar</label>
-                    <select
-                      value={cargoCadastro}
-                      onChange={e => setCargoCadastro(e.target.value as Cargo)}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50 transition text-sm text-slate-800 font-medium focus:bg-white cursor-pointer"
-                    >
-                      <option value="Técnico">Técnico de Manutenção (Ações de O.S. & Equipamentos)</option>
-                      <option value="Instrutor">Instrutor SENAI (Abertura de Chamados & Gráficos)</option>
-                      <option value="Gestor">Gestor / Supervisor (Receber, Contratar & Excluir)</option>
-                    </select>
                   </div>
 
                   {/* Senha */}

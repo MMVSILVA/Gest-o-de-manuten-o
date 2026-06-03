@@ -10,6 +10,8 @@ export interface Colaborador {
   nome: string;
   matricula: string;
   cargo: Cargo;
+  cargoDetalhado?: string; // e.g. "TECNICO EDUCACAO"
+  unidade?: string; // e.g. "FIRJAN SENAI VOLTA REDONDA AERO CLUBE"
   senhaText?: string; // Para autenticação mais robusta
   timestampCadastro: number;
 }

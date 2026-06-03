@@ -4,20 +4,21 @@
  */
 
 import { Colaborador, Equipamento, OrdemServico } from "../types";
+import { EQUIPAMENTOS_DO_ANEXO } from "./equipamentosAnexo";
 
 export const COLABORADORES_PADRAO: Colaborador[] = [
-  { id: "1001", nome: "Letícia Cabral", matricula: "1001", cargo: "Gestor", senhaText: "senai123", timestampCadastro: Date.now() - 50000000 },
-  { id: "1002", nome: "Isabelle Nunes", matricula: "1002", cargo: "Técnico", senhaText: "tecnico12", timestampCadastro: Date.now() - 40000000 },
-  { id: "1003", nome: "Maria Victória", matricula: "1003", cargo: "Técnico", senhaText: "tecnico34", timestampCadastro: Date.now() - 30000000 },
-  { id: "1004", nome: "Nicole Caroline", matricula: "1004", cargo: "Instrutor", senhaText: "mecanico1", timestampCadastro: Date.now() - 20000000 },
-  { id: "1005", nome: "Débora Letícia", matricula: "1005", cargo: "Gestor", senhaText: "gestor10", timestampCadastro: Date.now() - 10000000 },
-  { id: "1006", nome: "Carlos Mendes", matricula: "1006", cargo: "Instrutor", senhaText: "mecanico2", timestampCadastro: Date.now() - 5000000 },
-  { id: "1007", nome: "Ana Beatriz Sousa", matricula: "1007", cargo: "Técnico", senhaText: "tecnico07", timestampCadastro: Date.now() - 4000000 },
-  { id: "1008", nome: "Roberto Almeida", matricula: "1008", cargo: "Instrutor", senhaText: "instrutor1", timestampCadastro: Date.now() - 3000000 },
-  { id: "1009", nome: "Fernanda Costa", matricula: "1009", cargo: "Técnico", senhaText: "tecnico3", timestampCadastro: Date.now() - 2000000 },
-  { id: "1010", nome: "João Pedro Ramos", matricula: "1010", cargo: "Instrutor", senhaText: "instrutor2", timestampCadastro: Date.now() - 1000000 },
-  { id: "1011", nome: "Alexandre Rodrigues", matricula: "1011", cargo: "Gestor", senhaText: "alexandre123", timestampCadastro: Date.now() - 500000 },
-  { id: "1012", nome: "Wesley Silva", matricula: "1012", cargo: "Gestor", senhaText: "wesley123", timestampCadastro: Date.now() - 450000 },
+  { id: "1001", nome: "Letícia Cabral", matricula: "1001", cargo: "Gestor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "senai123", timestampCadastro: Date.now() - 50000000 },
+  { id: "1002", nome: "Isabelle Nunes", matricula: "1002", cargo: "Técnico", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "tecnico12", timestampCadastro: Date.now() - 40000000 },
+  { id: "1003", nome: "Maria Victória", matricula: "1003", cargo: "Técnico", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "tecnico34", timestampCadastro: Date.now() - 30000000 },
+  { id: "1004", nome: "Nicole Caroline", matricula: "1004", cargo: "Instrutor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "mecanico1", timestampCadastro: Date.now() - 20000000 },
+  { id: "1005", nome: "Débora Letícia", matricula: "1005", cargo: "Gestor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "gestor10", timestampCadastro: Date.now() - 10000000 },
+  { id: "1006", nome: "Carlos Mendes", matricula: "1006", cargo: "Instrutor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "mecanico2", timestampCadastro: Date.now() - 5000000 },
+  { id: "1007", nome: "Ana Beatriz Sousa", matricula: "1007", cargo: "Técnico", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "tecnico07", timestampCadastro: Date.now() - 4000000 },
+  { id: "1008", nome: "Roberto Almeida", matricula: "1008", cargo: "Instrutor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "instrutor1", timestampCadastro: Date.now() - 3000000 },
+  { id: "1009", nome: "Fernanda Costa", matricula: "1009", cargo: "Técnico", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "tecnico3", timestampCadastro: Date.now() - 2000000 },
+  { id: "1010", nome: "João Pedro Ramos", matricula: "1010", cargo: "Instrutor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "instrutor2", timestampCadastro: Date.now() - 1000000 },
+  { id: "1011", nome: "Alexandre da Silva", matricula: "1011", cargo: "Gestor", cargoDetalhado: "TECNICO EDUCACAO", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "alexandre123", timestampCadastro: Date.now() - 500000 },
+  { id: "1012", nome: "Wesley de Souza Faria", matricula: "1012", cargo: "Gestor", cargoDetalhado: "TECNICO(A) EDUCACAO", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "wesley123", timestampCadastro: Date.now() - 450000 },
 ];
 
 export const EQUIPAMENTOS_PADRAO: Equipamento[] = [
@@ -132,7 +133,8 @@ export const EQUIPAMENTOS_PADRAO: Equipamento[] = [
       { id: "gp8_1", nome: "⚙️ Motoredutor e Acionamento", pecas: ["Motoredutor SEW Eurodrive Heloidal", "Rolo Tracionador Emborrachado", "Mancais Autocompensadores Terminais", "Corrente de Transmissão Dupla"] },
       { id: "gp8_2", nome: "🏷️ Sensores e Lógica de Comando", pecas: ["Sensor Indutivo PNP M18", "Sensores Ópticos de Reflexão", "Módulo de Segurança Parada de Emergência", "Painel de Botoeiras Terminais"] }
     ]
-  }
+  },
+  ...EQUIPAMENTOS_DO_ANEXO
 ];
 
 export function getOrdensPadrao(): OrdemServico[] {
@@ -238,12 +240,17 @@ export function getOrdensPadrao(): OrdemServico[] {
 }
 
 export function carregarSimulacaoLocalStorage() {
-  if (!localStorage.getItem("manutech_colaboradores")) {
+  const salvoColab = localStorage.getItem("manutech_colaboradores");
+  if (!salvoColab || salvoColab.includes("Alexandre Rodrigues") || salvoColab.includes("Wesley Silva") || !salvoColab.includes("Alexandre da Silva")) {
     localStorage.setItem("manutech_colaboradores", JSON.stringify(COLABORADORES_PADRAO));
   }
-  if (!localStorage.getItem("manutech_equipamentos")) {
+  
+  // Força re-inicialização caso a lista de equipamentos antiga esteja incompleta ou desatualizada
+  const salvo = localStorage.getItem("manutech_equipamentos");
+  if (!salvo || JSON.parse(salvo).length < 20 || salvo.includes("Alexandre Rodrigues") || salvo.includes("Wesley Silva")) {
     localStorage.setItem("manutech_equipamentos", JSON.stringify(EQUIPAMENTOS_PADRAO));
   }
+  
   if (!localStorage.getItem("manutech_ordens")) {
     localStorage.setItem("manutech_ordens", JSON.stringify(getOrdensPadrao()));
   }

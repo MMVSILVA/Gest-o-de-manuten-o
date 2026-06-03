@@ -106,13 +106,27 @@ export const ColaboradoresView: React.FC<Props> = ({
                 else if (c.cargo === "Mecânico") badgeCargo = "bg-blue-50 text-blue-700 border border-blue-100";
 
                 return (
-                  <tr key={c.id} className="hover:bg-slate-50/50 transition">
-                    <td className="px-6 py-4 font-bold text-slate-900">{c.nome}</td>
-                    <td className="px-6 py-4 font-mono text-xs text-slate-500">{c.matricula}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeCargo}`}>
-                        {c.cargo}
-                      </span>
+                  <tr key={c.id} className="hover:bg-slate-50/50 transition animate-in fade-in duration-150">
+                    <td className="px-6 py-3.5">
+                      <div className="font-bold text-slate-900 leading-tight">{c.nome}</div>
+                      {c.unidade && (
+                        <div className="text-[9.5px] font-semibold text-zinc-400 mt-0.5 leading-snug">
+                          {c.unidade}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-3.5 font-mono text-xs font-bold text-slate-500">{c.matricula}</td>
+                    <td className="px-6 py-3.5">
+                      <div className="flex flex-col space-y-1.5 items-start">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase ${badgeCargo}`}>
+                          {c.cargo}
+                        </span>
+                        {c.cargoDetalhado && (
+                          <span className="text-[10px] font-black text-blue-700 bg-blue-50/60 px-2 py-0.5 rounded border border-blue-100/40 tracking-wider">
+                            {c.cargoDetalhado}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-400">
                       <code>{c.senhaText || "senai123"}</code>

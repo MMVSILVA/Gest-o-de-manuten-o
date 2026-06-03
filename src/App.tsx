@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import { Colaborador, Equipamento, OrdemServico, AccessibilityConfig, Chamado } from "./types";
-import { carregarSimulacaoLocalStorage, COLABORADORES_PADRAO } from "./data/mockData";
+import { carregarSimulacaoLocalStorage, COLABORADORES_PADRAO, EQUIPAMENTOS_PADRAO } from "./data/mockData";
 import { LoginScreen } from "./components/LoginScreen";
 import { DashboardView } from "./components/DashboardView";
 import { EquipmentsView } from "./components/EquipmentsView";
@@ -72,7 +72,16 @@ export default function App() {
 
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>(() => {
     const sEq = localStorage.getItem("manutech_equipamentos");
-    return sEq ? JSON.parse(sEq) : [];
+    if (sEq) {
+      try {
+        const parsed = JSON.parse(sEq);
+        if (parsed.length >= 20) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    localStorage.setItem("manutech_equipamentos", JSON.stringify(EQUIPAMENTOS_PADRAO));
+    return EQUIPAMENTOS_PADRAO;
   });
 
   const [ordens, setOrdens] = useState<OrdemServico[]>(() => {
@@ -113,6 +122,7 @@ export default function App() {
 
   const [activeView, setActiveView] = useState<'dashboard' | 'ordens' | 'calendario' | 'nova-os' | 'relatorios' | 'colaboradores' | 'perfil' | 'equipamentos' | 'chamados' | 'incendio'>('dashboard');
   const [eqSelecionadoId, setEqSelecionadoId] = useState<string | null>(null);
+  const [equipamentoPreSelecionadoOs, setEquipamentoPreSelecionadoOs] = useState<string | null>(null);
   
   // Estados do Simulador de Emergência IoT
   const [simulacaoAtiva, setSimulacaoAtiva] = useState<boolean>(() => {
@@ -553,7 +563,7 @@ export default function App() {
       prioridade: chamado.prioridade,
       tipo: chamado.tipo,
       status: "Pendente",
-      descricao: `[O.S. RECEBIDA E CONTRATADA POR GESTOR: ${colaboradorLogado ? colaboradorLogado.nome : "Alexandre Rodrigues"}] — ` + chamado.descricao,
+      descricao: `[O.S. RECEBIDA E CONTRATADA POR GESTOR: ${colaboradorLogado ? colaboradorLogado.nome : "Alexandre da Silva"}] — ` + chamado.descricao,
       data: dataFormatada,
       timestamp: Date.now(),
       rawDate: new Date().toISOString().slice(0, 16)
@@ -946,7 +956,7 @@ export default function App() {
             {/* Criar O.S - Esconde para Mecânico */}
             {!isMecanico && !isInstrutor && (
               <button 
-                onClick={() => { setActiveView('nova-os'); setEqSelecionadoId(null); }}
+                onClick={() => { setActiveView('nova-os'); setEqSelecionadoId(null); setEquipamentoPreSelecionadoOs(null); }}
                 className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl transition font-semibold text-xs uppercase tracking-wider text-left cursor-pointer ${
                   activeView === 'nova-os' ? "bg-blue-600 text-white shadow-md shadow-blue-500/10" : "text-slate-400 hover:bg-slate-800 hover:text-white"
                 }`}
@@ -1144,7 +1154,12 @@ export default function App() {
             <OrdensView 
               ordens={ordens}
               colaboradorLogado={colaboradorLogado}
-              onNavigate={setActiveView}
+              onNavigate={(view) => {
+                if (view === 'nova-os') {
+                  setEquipamentoPreSelecionadoOs(null);
+                }
+                setActiveView(view);
+              }}
               onAlterarStatus={handleAlterarStatus}
               onExcluirOS={handleExcluirOS}
             />
@@ -1174,6 +1189,7 @@ export default function App() {
               onNavigate={setActiveView}
               onCriarOS={handleCriarOS}
               equipamentos={equipamentos}
+              equipamentoPreSelecionado={equipamentoPreSelecionadoOs}
             />
           )}
 
@@ -1227,6 +1243,11 @@ export default function App() {
           onUpdateEquipamento={handleUpdateEquipamento}
           onShowImageFull={setImageFullSrc}
           onExcluirEquipamento={handleExcluirEquipamento}
+          onAbrirNovaOs={(nome) => {
+            setEquipamentoPreSelecionadoOs(nome);
+            setEqSelecionadoId(null);
+            setActiveView('nova-os');
+          }}
         />
       )}
 

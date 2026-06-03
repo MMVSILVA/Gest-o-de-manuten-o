@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from "react";
-import { PlusSquare, Hammer, Wind, Cpu, Settings, User, LayoutGrid, List, Download } from "lucide-react";
+import { PlusSquare, Hammer, Wind, Cpu, Settings, User, LayoutGrid, List, Download, Search, Eye, FileText } from "lucide-react";
 import { Equipamento, Colaborador } from "../types";
 import { exportToCSV } from "../lib/export";
 
@@ -26,6 +26,18 @@ export const EquipmentsView: React.FC<Props> = ({
   const [modelo, setModelo] = useState("");
   const [setor, setSetor] = useState("");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [busca, setBusca] = useState("");
+
+  const equipamentosFiltrados = React.useMemo(() => {
+    const termo = busca.toLowerCase().trim();
+    if (!termo) return equipamentos;
+    return equipamentos.filter(eq => 
+      eq.nome.toLowerCase().includes(termo) ||
+      eq.modelo.toLowerCase().includes(termo) ||
+      eq.setor.toLowerCase().includes(termo) ||
+      (eq.id && eq.id.toLowerCase().includes(termo))
+    );
+  }, [equipamentos, busca]);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,61 +85,115 @@ export const EquipmentsView: React.FC<Props> = ({
         
         <div className="flex flex-wrap gap-2">
           {/* Botão de Exportar CSV */}
-          <button
-            onClick={handleExportCSV}
-            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2.5 rounded-xl font-bold flex items-center space-x-2 transition text-xs shadow-xs border border-slate-200 cursor-pointer"
-            title="Exportar Lista de Equipamentos em formato CSV"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Exportar Lista</span>
-          </button>
+          <div className="relative group/tooltip">
+            <button
+              onClick={handleExportCSV}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2.5 rounded-xl font-bold flex items-center space-x-2 transition text-xs shadow-xs border border-slate-200 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Exportar Lista</span>
+            </button>
+            <div className="absolute right-0 top-full mt-2 hidden group-hover/tooltip:block px-2.5 py-1.5 bg-slate-900 text-white text-[10px] font-bold rounded-lg whitespace-nowrap shadow-xl z-50 animate-in fade-in duration-150">
+              Gerar planilha Excel (.csv) do inventário
+              <span className="absolute bottom-full right-6 border-4 border-transparent border-b-slate-900" />
+            </div>
+          </div>
 
           {/* Adicionar apenas para Gestor ou Técnico */}
           {!isInstrutor && (
-            <button
-              onClick={() => setModalAberto(true)}
-              className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-4 py-2.5 rounded-xl font-bold flex items-center space-x-2 transition text-xs shadow-sm cursor-pointer"
-            >
-              <PlusSquare className="w-4 h-4" />
-              <span>Cadastrar Equipamento</span>
-            </button>
+            <div className="relative group/tooltip">
+              <button
+                onClick={() => setModalAberto(true)}
+                className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-4 py-2.5 rounded-xl font-bold flex items-center space-x-2 transition text-xs shadow-sm cursor-pointer"
+              >
+                <PlusSquare className="w-4 h-4" />
+                <span>Cadastrar Equipamento</span>
+              </button>
+              <div className="absolute right-0 top-full mt-2 hidden group-hover/tooltip:block px-2.5 py-1.5 bg-slate-900 text-white text-[10px] font-bold rounded-lg whitespace-nowrap shadow-xl z-50 animate-in fade-in duration-150">
+                Adicionar novo ativo industrial ao SENAI
+                <span className="absolute bottom-full right-6 border-4 border-transparent border-b-slate-900" />
+              </div>
+            </div>
           )}
         </div>
       </div>
 
       {/* Barra de Filtros / Toggles de Lista */}
-      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-500">
-          Mostrando <span className="font-bold text-slate-800">{equipamentos.length}</span> equipamento(s) cadastrado(s)
-        </span>
-        
-        {/* Toggles de Visualização de Lista / Grid */}
-        <div className="bg-slate-100 p-1 rounded-xl flex items-center space-x-1">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-1.5 rounded-lg flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
-              viewMode === 'grid' ? "bg-white text-blue-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Visual Carrossel / Grid</span>
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded-lg flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
-              viewMode === 'list' ? "bg-white text-blue-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <List className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Lista / Tabela</span>
-          </button>
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Campo de Busca */}
+        <div className="relative flex-1 max-w-md w-full">
+          <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <input
+            type="text"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Pesquisar por equipamento, modelo, setor ou patrimônio..."
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none text-xs text-slate-800 placeholder-slate-400 font-medium transition"
+          />
+        </div>
+
+        {/* Informações de Status e Modo de Visualização */}
+        <div className="flex flex-wrap items-center justify-between md:justify-end gap-4 shrink-0 w-full md:w-auto">
+          <span className="text-xs font-semibold text-slate-500">
+            {busca.length > 0 ? (
+              <>
+                Filtrados: <span className="font-bold text-slate-800">{equipamentosFiltrados.length}</span> de <span className="text-slate-400">{equipamentos.length}</span>
+              </>
+            ) : (
+              <>
+                Total: <span className="font-bold text-slate-800">{equipamentos.length}</span> ativos
+              </>
+            )}
+          </span>
+          
+          {/* Toggles de Visualização de Lista / Grid */}
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center space-x-1 border border-slate-200/50">
+            <div className="relative group/tooltip">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
+                  viewMode === 'grid' ? "bg-white text-blue-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Visual Carrossel / Grid</span>
+              </button>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:block px-2.5 py-1.5 bg-slate-900 text-white text-[10px] font-bold rounded-lg whitespace-nowrap shadow-xl z-50 animate-in fade-in duration-150">
+                Visualização em grade de cards gráficos
+                <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
+              </div>
+            </div>
+
+            <div className="relative group/tooltip">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
+                  viewMode === 'list' ? "bg-white text-blue-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Lista / Tabela</span>
+              </button>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:block px-2.5 py-1.5 bg-slate-900 text-white text-[10px] font-bold rounded-lg whitespace-nowrap shadow-xl z-50 animate-in fade-in duration-150">
+                Visualização estruturada em tabela de auditoria
+                <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Condicional Render: Grid layout ou List layout */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {equipamentos.map((eq) => {
+          {equipamentosFiltrados.length === 0 ? (
+            <div className="col-span-full text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 p-5">
+              <Search className="w-8 h-8 text-slate-300 mx-auto mb-2 animate-pulse" />
+              <h5 className="font-bold text-xs text-slate-700">Nenhum equipamento correspondente</h5>
+              <p className="text-[10px] text-slate-500 mt-1">Refine seus termos de busca para encontrar o ativo desejado.</p>
+            </div>
+          ) : (
+            equipamentosFiltrados.map((eq) => {
             let statusCor = eq.status === "Operacional" 
               ? "text-emerald-700 bg-emerald-50 border-emerald-200" 
               : eq.status === "Em Manutenção" 
@@ -179,7 +245,7 @@ export const EquipmentsView: React.FC<Props> = ({
                 </div>
               </div>
             );
-          })}
+          }))}
         </div>
       ) : (
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-200">
@@ -193,17 +259,18 @@ export const EquipmentsView: React.FC<Props> = ({
                   <th className="px-5 py-4 font-semibold text-[10px]">Setor / Divisão</th>
                   <th className="px-5 py-4 font-semibold text-[10px]">Responsável Técnico</th>
                   <th className="px-5 py-4 font-semibold text-[10px] text-center">Status Operacional</th>
+                  <th className="px-5 py-4 font-semibold text-[10px] text-right">Ações Rápidas</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150 text-xs text-slate-700">
-                {equipamentos.length === 0 ? (
+                {equipamentosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-5 py-12 text-center text-slate-400 italic">
-                      Nenhum equipamento localizado sob acompanhamento.
+                    <td colSpan={7} className="px-5 py-12 text-center text-slate-400 italic">
+                      Nenhum equipamento correspondente encontrado.
                     </td>
                   </tr>
                 ) : (
-                  equipamentos.map((eq) => {
+                  equipamentosFiltrados.map((eq) => {
                     let statusCores = eq.status === "Operacional" 
                       ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
                       : eq.status === "Em Manutenção" 
@@ -220,14 +287,47 @@ export const EquipmentsView: React.FC<Props> = ({
                         <td className="px-5 py-4 font-bold text-slate-900">{eq.nome}</td>
                         <td className="px-5 py-4 text-slate-500 font-medium">{eq.modelo}</td>
                         <td className="px-5 py-4 text-slate-500">{eq.setor}</td>
-                        <td className="px-5 py-4 text-slate-650 flex items-center space-x-1 mt-1.5 border-none h-full bg-transparent p-0">
-                          <User className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{eq.responsavel}</span>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center space-x-1.5 py-1">
+                            <User className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="font-medium text-slate-600 truncate max-w-[120px]">{eq.responsavel}</span>
+                          </div>
                         </td>
                         <td className="px-5 py-4 text-center whitespace-nowrap">
                           <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${statusCores}`}>
                             {eq.status}
                           </span>
+                        </td>
+                        <td className="px-5 py-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end space-x-2">
+                            {/* Ação 1: Consultar / Detalhes com Dica Flutuante */}
+                            <div className="relative group/tooltip inline-block">
+                              <button 
+                                onClick={() => onSelectEquipamento(eq.id)}
+                                className="p-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition active:scale-95 cursor-pointer border border-blue-100"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <div className="absolute right-0 bottom-full mb-2 hidden group-hover/tooltip:block px-2.5 py-1.5 bg-slate-900 text-white text-[10px] font-bold rounded-lg whitespace-nowrap shadow-xl z-50 animate-in fade-in duration-100">
+                                Ver Ficha, QR Code &amp; Manuais
+                                <span className="absolute top-full right-3 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+
+                            {/* Ação 2: Diagnosticar / Manutenção com Dica Flutuante */}
+                            <div className="relative group/tooltip inline-block">
+                              <button 
+                                onClick={() => onSelectEquipamento(eq.id)}
+                                className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition active:scale-95 cursor-pointer border border-slate-200"
+                              >
+                                <Hammer className="w-3.5 h-3.5" />
+                              </button>
+                              <div className="absolute right-0 bottom-full mb-2 hidden group-hover/tooltip:block px-2.5 py-1.5 bg-slate-900 text-white text-[10px] font-bold rounded-lg whitespace-nowrap shadow-xl z-50 animate-in fade-in duration-100">
+                                Abrir Ordens de Serviço &amp; Manutenção
+                                <span className="absolute top-full right-3 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     );

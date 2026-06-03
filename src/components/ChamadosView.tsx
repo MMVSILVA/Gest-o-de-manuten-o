@@ -249,21 +249,23 @@ export const ChamadosView: React.FC<Props> = ({
               <div className="space-y-3.5">
                 <div className="flex items-center space-x-3 p-2 bg-slate-50/50 hover:bg-slate-50 rounded-xl border border-slate-150 transition">
                   <div className="w-8 h-8 rounded-full bg-blue-105 text-blue-700 font-extrabold flex items-center justify-center text-xs shadow-xs shrink-0 font-sans">
-                    AR
+                    AS
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs font-black text-slate-800 truncate">Alexandre Rodrigues</h4>
-                    <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider truncate">Gestor de Manutenção</p>
+                    <h4 className="text-xs font-black text-slate-800 truncate">Alexandre da Silva</h4>
+                    <p className="text-[9px] text-blue-700 font-bold uppercase tracking-wider truncate">TECNICO EDUCACAO</p>
+                    <p className="text-[7.5px] text-slate-400 truncate">FIRJAN SENAI VOLTA REDONDA</p>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3 p-2 bg-slate-50/50 hover:bg-slate-50 rounded-xl border border-slate-150 transition">
                   <div className="w-8 h-8 rounded-full bg-emerald-110 text-emerald-700 font-extrabold flex items-center justify-center text-xs shadow-xs shrink-0 font-sans">
-                    WS
+                    WF
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs font-black text-slate-800 truncate">Wesley Silva</h4>
-                    <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider truncate">Gestor de Operações</p>
+                    <h4 className="text-xs font-black text-slate-800 truncate">Wesley de Souza Faria</h4>
+                    <p className="text-[9px] text-emerald-700 font-bold uppercase tracking-wider truncate">TECNICO(A) EDUCACAO</p>
+                    <p className="text-[7.5px] text-slate-400 truncate">FIRJAN SENAI VOLTA REDONDA</p>
                   </div>
                 </div>
               </div>

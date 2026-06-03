@@ -38,6 +38,23 @@ export const RelatoriosView: React.FC<Props> = ({ ordens, equipamentos }) => {
     };
   }, [ordens, equipamentos]);
 
+  const ratioStats = useMemo(() => {
+    const concluidas = statistics.concluidas;
+    const pendentes = statistics.pendentes;
+    const totalParcial = concluidas + pendentes;
+    
+    const pctConcluidas = totalParcial > 0 ? Math.round((concluidas / totalParcial) * 100) : 0;
+    const pctPendentes = totalParcial > 0 ? (100 - pctConcluidas) : 0;
+
+    return {
+      totalParcial,
+      pctConcluidas,
+      pctPendentes,
+      concluidas,
+      pendentes
+    };
+  }, [statistics]);
+
   const gerarParecerIA = async () => {
     setCarregandoIA(true);
     setLaudoEstrategico("");
@@ -173,7 +190,7 @@ export const RelatoriosView: React.FC<Props> = ({ ordens, equipamentos }) => {
       </div>
 
       {/* Visualizadores Gráficos de Prioridade e Status */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         {/* Distribuição por Status - SVG Native */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
@@ -254,6 +271,97 @@ export const RelatoriosView: React.FC<Props> = ({ ordens, equipamentos }) => {
               </div>
             </div>
 
+          </div>
+        </div>
+
+        {/* Produtividade da Equipe - Gráfico de Rosca de Concluídas vs Pendentes */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-slate-800 text-sm">Produtividade (Concluídas x Pendentes)</h3>
+            <p className="text-[10px] text-slate-400 font-medium">Contraste de resoluções de ordens de serviço do setor técnico.</p>
+          </div>
+          
+          <div className="flex flex-col items-center justify-center py-2 relative">
+            {ratioStats.totalParcial > 0 ? (
+              <div className="relative flex items-center justify-center">
+                <svg viewBox="0 0 140 140" className="w-32 h-32 transform -rotate-90">
+                  {/* Círculo Cinza Base */}
+                  <circle
+                    cx="70"
+                    cy="70"
+                    r="52"
+                    fill="transparent"
+                    stroke="#f8fafc"
+                    strokeWidth="12"
+                  />
+                  {/* Concluídas (Emerald) */}
+                  <circle
+                    cx="70"
+                    cy="70"
+                    r="52"
+                    fill="transparent"
+                    stroke="#10b981"
+                    strokeWidth="12"
+                    strokeDasharray="326.7"
+                    strokeDashoffset={326.7 - (326.7 * ratioStats.pctConcluidas) / 100}
+                    className="transition-all duration-500 ease-out"
+                  />
+                  {/* Pendentes (Red) */}
+                  <circle
+                    cx="70"
+                    cy="70"
+                    r="52"
+                    fill="transparent"
+                    stroke="#ef4444"
+                    strokeWidth="12"
+                    strokeDasharray="326.7"
+                    strokeDashoffset={326.7 - (326.7 * ratioStats.pctPendentes) / 100}
+                    transform={`rotate(${3.6 * ratioStats.pctConcluidas} 70 70)`}
+                    className="transition-all duration-500 ease-out"
+                  />
+                </svg>
+
+                {/* Texto Central da Rosca */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-xl font-extrabold text-slate-800 leading-none">
+                    {ratioStats.pctConcluidas}%
+                  </span>
+                  <span className="text-[9px] text-emerald-600 font-black uppercase tracking-widest mt-0.5">
+                    Resolvido
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center text-slate-400">
+                <svg viewBox="0 0 140 140" className="w-28 h-28 opacity-25">
+                  <circle cx="70" cy="70" r="52" fill="transparent" stroke="#cbd5e1" strokeWidth="10" />
+                </svg>
+                <p className="text-[10px] mt-2 font-semibold">Sem O.S. ativas para comparar</p>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-around text-xs font-semibold">
+            {/* Legenda Concluídas */}
+            <div className="flex items-center space-x-2 text-slate-700">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase font-bold text-slate-400 leading-none">Concluídas</span>
+                <span className="text-sm font-extrabold text-slate-800 mt-0.5">{ratioStats.concluidas} O.S.</span>
+              </div>
+            </div>
+
+            {/* Divisor vertical */}
+            <div className="w-px h-8 bg-slate-100"></div>
+
+            {/* Legenda Pendentes */}
+            <div className="flex items-center space-x-2 text-slate-700">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase font-bold text-slate-400 leading-none">Pendente(s)</span>
+                <span className="text-sm font-extrabold text-slate-800 mt-0.5">{ratioStats.pendentes} O.S.</span>
+              </div>
+            </div>
           </div>
         </div>
 
