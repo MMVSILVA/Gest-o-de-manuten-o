@@ -24,7 +24,6 @@ import { ColaboradoresView } from "./components/ColaboradoresView";
 import { PerfilView } from "./components/PerfilView";
 import { AccessibilityToggle } from "./components/AccessibilityToggle";
 import { ChamadosView } from "./components/ChamadosView";
-import { IncendioView } from "./components/IncendioView";
 import { ManuAppLogo } from "./components/ManuAppLogo";
 
 export default function App() {
@@ -120,7 +119,7 @@ export default function App() {
     ];
   });
 
-  const [activeView, setActiveView] = useState<'dashboard' | 'ordens' | 'calendario' | 'nova-os' | 'relatorios' | 'colaboradores' | 'perfil' | 'equipamentos' | 'chamados' | 'incendio'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'ordens' | 'calendario' | 'nova-os' | 'relatorios' | 'colaboradores' | 'perfil' | 'equipamentos' | 'chamados'>('dashboard');
   const [eqSelecionadoId, setEqSelecionadoId] = useState<string | null>(null);
   const [equipamentoPreSelecionadoOs, setEquipamentoPreSelecionadoOs] = useState<string | null>(null);
   
@@ -835,7 +834,7 @@ export default function App() {
   // Config do menu
   const isMecanico = false;
   const isInstrutor = colaboradorLogado?.cargo === "Instrutor";
-  const isGestor = colaboradorLogado?.cargo === "Gestor";
+  const isGestor = colaboradorLogado?.cargo === "Técnico";
 
   // Se não logado, renderiza tela de login
   if (!colaboradorLogado) {
@@ -858,8 +857,7 @@ export default function App() {
     relatorios: "Relatórios & KPIs",
     colaboradores: "Equipe / Colaboradores",
     perfil: "Meu Perfil",
-    chamados: colaboradorLogado?.cargo === "Instrutor" ? "Abrir Chamado" : "Triagem de Chamados",
-    incendio: "Brigada & Prevenção de Incêndios"
+    chamados: colaboradorLogado?.cargo === "Instrutor" ? "Abrir Chamado" : "Triagem de Chamados"
   };
 
   // Busca o equipamento aberto para detalhes (se selecionado)
@@ -924,16 +922,7 @@ export default function App() {
               <span>Agenda</span>
             </button>
 
-            {/* Equipamentos contra Incêndio */}
-            <button 
-              onClick={() => { setActiveView('incendio'); setEqSelecionadoId(null); }}
-              className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl transition font-semibold text-xs uppercase tracking-wider text-left cursor-pointer ${
-                activeView === 'incendio' ? "bg-red-650 text-white shadow-md shadow-red-500/10" : "text-slate-400 hover:bg-slate-800 hover:text-white"
-              }`}
-            >
-              <Flame className="w-4 h-4 text-red-500" />
-              <span>Brigada Incêndio</span>
-            </button>
+
 
             {/* Chamados Técnicos de Manutenção */}
             <button 
@@ -1175,13 +1164,7 @@ export default function App() {
             />
           )}
 
-          {activeView === 'incendio' && (
-            <IncendioView 
-              colaboradorLogado={colaboradorLogado}
-              onEmitirOS={handleCriarOS}
-              triggerNotification={triggerNotification}
-            />
-          )}
+
 
           {activeView === 'nova-os' && (
             <NovaOsView 
@@ -1204,16 +1187,18 @@ export default function App() {
             />
           )}
 
-          {activeView === 'relatorios' && (
-            <RelatoriosView 
-              ordens={ordens}
-              equipamentos={equipamentos}
-            />
-          )}
+           {activeView === 'relatorios' && (
+             <RelatoriosView 
+               ordens={ordens}
+               equipamentos={equipamentos}
+               colaboradorLogado={colaboradorLogado}
+             />
+           )}
 
           {activeView === 'colaboradores' && (
             <ColaboradoresView 
               colaboradores={colaboradores}
+              colaboradorLogado={colaboradorLogado}
               onAdicionarColaborador={handleAdicionarColaborador}
               onExcluirColaborador={handleExcluirColaborador}
             />

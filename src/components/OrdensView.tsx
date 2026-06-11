@@ -27,24 +27,32 @@ export const OrdensView: React.FC<Props> = ({
 }) => {
   const [busca, setBusca] = useState("");
   const [osDetalhada, setOsDetalhada] = useState<OrdemServico | null>(null);
+  const [filtroPrioridade, setFiltroPrioridade] = useState<string>("Todas");
 
   const filtrarOrdens = useMemo(() => {
+    let list = ordens;
+
+    // Filtro por prioridade
+    if (filtroPrioridade !== "Todas") {
+      list = list.filter(o => o.prioridade === filtroPrioridade);
+    }
+
     const b = busca.toLowerCase().trim();
-    if (!b) return ordens;
-    return ordens.filter(o => 
+    if (!b) return list;
+    return list.filter(o => 
       o.equipamento.toLowerCase().includes(b) ||
       o.solicitante.toLowerCase().includes(b) ||
       o.descricao.toLowerCase().includes(b) ||
       o.tipo.toLowerCase().includes(b) ||
       o.status.toLowerCase().includes(b)
     );
-  }, [busca, ordens]);
+  }, [busca, ordens, filtroPrioridade]);
 
   // Controles de Acesso Granulares por Cargo de Trabalho
   const isInstrutor = colaboradorLogado?.cargo === "Instrutor";
   
-  // Apenas Gestores podem excluir O.S. (bloqueado para Técnicos, Mecânicos e Instrutores)
-  const bloquearExcluir = colaboradorLogado?.cargo !== "Gestor";
+  // Apenas Técnicos (que herdam as permissões de Gestor/Supervisor) podem excluir O.S.
+  const bloquearExcluir = colaboradorLogado?.cargo !== "Técnico";
 
   const handleExportCSV = () => {
     const headers = [
@@ -97,16 +105,32 @@ export const OrdensView: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Caixa de Pesquisa Geral */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3 max-w-md">
-        <Search className="w-5 h-5 text-slate-400 shrink-0" />
-        <input
-          type="text"
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          placeholder="Pesquise por equipamento, mecânico, descrição..."
-          className="w-full text-slate-700 outline-none text-xs md:text-sm bg-transparent"
-        />
+      {/* Filtros e Caixa de Pesquisa */}
+      <div className="flex flex-col sm:flex-row gap-3 max-w-2xl">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3 flex-1">
+          <Search className="w-5 h-5 text-slate-400 shrink-0" />
+          <input
+            type="text"
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Pesquise por equipamento, mecânico, descrição..."
+            className="w-full text-slate-700 outline-none text-xs md:text-sm bg-transparent"
+          />
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-2 shrink-0">
+          <span className="text-xs font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Prioridade:</span>
+          <select
+            value={filtroPrioridade}
+            onChange={e => setFiltroPrioridade(e.target.value)}
+            className="text-xs font-extrabold text-slate-800 bg-transparent outline-none cursor-pointer"
+          >
+            <option value="Todas">Todas</option>
+            <option value="Baixa">Baixa</option>
+            <option value="Média">Média</option>
+            <option value="Alta">Alta</option>
+          </select>
+        </div>
       </div>
 
       {/* Tabela de Dados Geral */}

@@ -50,6 +50,7 @@ export const LoginScreen: React.FC<Props> = ({
   const [senhaCadastro, setSenhaCadastro] = useState("");
   const [showSenhaCadastro, setShowSenhaCadastro] = useState(false);
   const [sucessoCadastro, setSucessoCadastro] = useState(false);
+  const [tokenCadastro, setTokenCadastro] = useState("");
 
   // Estados - Esqueci Senha
   const [recuperarMatricula, setRecuperarMatricula] = useState("");
@@ -103,11 +104,34 @@ export const LoginScreen: React.FC<Props> = ({
     const nome = nomeCadastro.trim();
     const mat = matriculaCadastro.trim();
     const pin = senhaCadastro.trim();
+    const tok = tokenCadastro.trim().toUpperCase();
 
-    if (!nome || !mat || !pin) {
-      setErro("Por favor, preencha todos os campos do cadastro.");
+    if (!nome || !mat || !pin || !tok) {
+      setErro("Por favor, preencha todos os campos do cadastro, incluindo o Token de Autorização do Supervisor.");
       return;
     }
+
+    // Carrega e valida o Token de Autorização do Supervisor
+    const savedTokensRaw = localStorage.getItem("manutech_tokens");
+    let tokensList: any[] = [];
+    if (savedTokensRaw) {
+      tokensList = JSON.parse(savedTokensRaw);
+    } else {
+      // Inicialização se vazio com tokens dos gestores Alexandre da Silva e Wesley de Souza Faria
+      tokensList = [
+        { codigo: "SENAI-1011-A", criadoPor: "Alexandre da Silva", timestampCriacao: Date.now(), tipo: "multiplo" },
+        { codigo: "SENAI-1012-W", criadoPor: "Wesley de Souza Faria", timestampCriacao: Date.now(), tipo: "unico" }
+      ];
+      localStorage.setItem("manutech_tokens", JSON.stringify(tokensList));
+    }
+
+    const tokenIndex = tokensList.findIndex(t => t.codigo.toUpperCase() === tok);
+    if (tokenIndex === -1) {
+      setErro("Token de Autorização inválido ou expirado. Somente supervisores autorizados (Alexandre da Silva / Wesley de Souza Faria) podem emitir chaves de cadastro.");
+      return;
+    }
+
+    const tokenEncontrado = tokensList[tokenIndex];
 
     // Valida se já existe colaborador com essa matrícula
     const duplicado = colaboradores.some(c => c.matricula === mat);
@@ -124,6 +148,12 @@ export const LoginScreen: React.FC<Props> = ({
       senhaText: pin,
       timestampCadastro: Date.now()
     };
+
+    // Consome o token se for de uso único
+    if (tokenEncontrado.tipo === "unico") {
+      tokensList.splice(tokenIndex, 1);
+      localStorage.setItem("manutech_tokens", JSON.stringify(tokensList));
+    }
 
     // Salva na lista global
     onRegistrarColaborador(novoColab);
@@ -215,56 +245,11 @@ export const LoginScreen: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Dicas de Testes com Níveis de Acesso */}
+            {/* Branding final description */}
             <div className="space-y-3 mt-6 pt-6 border-t border-slate-800/80 text-xs text-slate-300">
-              <div className="flex justify-between items-center">
-                <h4 className="font-bold text-slate-300 flex items-center space-x-1.5">
-                  <HelpCircle className="w-4 h-4 text-slate-400" />
-                  <span>Simular Perfis de Cargo:</span>
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => setMostrarSimulacao(!mostrarSimulacao)}
-                  className="md:hidden text-[10px] font-bold uppercase bg-slate-800 text-blue-400 hover:bg-slate-750 px-2.5 py-1 rounded transition border border-slate-700 cursor-pointer select-none"
-                >
-                  {mostrarSimulacao ? "Esconder" : "Mostrar"}
-                </button>
-              </div>
-
-              <div className={`${mostrarSimulacao ? "block" : "hidden md:grid"} grid-cols-1 gap-2 animate-in slide-in-from-top-1 duration-200`}>
-                <button
-                  type="button"
-                  onClick={() => { preencherCredencial("1011", "alexandre123"); setMostrarSimulacao(false); }}
-                  className="text-left bg-blue-950/40 hover:bg-slate-800 p-2 rounded border border-blue-800/60 transition cursor-pointer text-xs"
-                >
-                  <span className="font-semibold text-blue-400 block text-[9.5px]">ALEXANDRE DA SILVA (Técnico Educação)</span>
-                  Matrícula: <code className="text-slate-200 font-mono text-[10px]">1011</code> | Senha: <code className="text-slate-200 font-mono text-[10px]">alexandre123</code>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { preencherCredencial("1012", "wesley123"); setMostrarSimulacao(false); }}
-                  className="text-left bg-emerald-950/40 hover:bg-slate-800 p-2 rounded border border-emerald-800/60 transition cursor-pointer text-xs"
-                >
-                  <span className="font-semibold text-emerald-400 block text-[9.5px]">WESLEY DE SOUZA FARIA (Técnico(a) Ed.)</span>
-                  Matrícula: <code className="text-slate-200 font-mono text-[10px]">1012</code> | Senha: <code className="text-slate-200 font-mono text-[10px]">wesley123</code>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { preencherCredencial("1002", "tecnico12"); setMostrarSimulacao(false); }}
-                  className="text-left bg-slate-800/60 hover:bg-slate-800 p-2 rounded border border-slate-700 transition cursor-pointer text-xs"
-                >
-                  <span className="font-semibold text-yellow-500 block text-[9.5px]">TÉCNICO DE MANUTENÇÃO (Isabelle)</span>
-                  Matrícula: <code className="text-slate-200 font-mono text-[10px]">1002</code> | Senha: <code className="text-slate-200 font-mono text-[10px]">tecnico12</code>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { preencherCredencial("1004", "mecanico1"); setMostrarSimulacao(false); }}
-                  className="text-left bg-slate-800/60 hover:bg-slate-800 p-2 rounded border border-slate-700 transition cursor-pointer text-xs"
-                >
-                  <span className="font-semibold text-blue-400 block text-[9.5px]">INSTRUTOR SENAI (Nicole Caroline)</span>
-                  Matrícula: <code className="text-slate-200 font-mono text-[10px]">1004</code> | Senha: <code className="text-slate-200 font-mono text-[10px]">mecanico1</code>
-                </button>
-              </div>
+              <p className="text-slate-500 text-[11px] leading-relaxed">
+                Manutech SENAI — Sincronizado com os padrões industriais e diretivas normativas vigentes.
+              </p>
             </div>
           </div>
 
@@ -438,6 +423,25 @@ export const LoginScreen: React.FC<Props> = ({
                       >
                         {showSenhaCadastro ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Token de Autorização do Supervisor */}
+                  <div className="bg-blue-50/40 p-3 rounded-2xl border border-blue-100 space-y-1.5">
+                    <label className="block text-xs font-extrabold text-blue-800 uppercase tracking-wider">Token de Autorização</label>
+                    <p className="text-[10px] text-slate-500 pb-1 leading-relaxed font-medium">
+                      Exigido. Acesse com sua matrícula regulamentar e use uma chave válida.
+                    </p>
+                    <div className="relative">
+                      <Key className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-blue-600 w-4 h-4" />
+                      <input
+                        required
+                        type="text"
+                        value={tokenCadastro}
+                        onChange={e => setTokenCadastro(e.target.value)}
+                        placeholder="Ex: SENAI-1011-A"
+                        className="w-full pl-10 pr-4 py-2.5 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition text-sm bg-white text-slate-800 font-extrabold tracking-wider placeholder:font-normal placeholder:tracking-normal"
+                      />
                     </div>
                   </div>
                 </div>

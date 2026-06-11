@@ -7,18 +7,18 @@ import { Colaborador, Equipamento, OrdemServico } from "../types";
 import { EQUIPAMENTOS_DO_ANEXO } from "./equipamentosAnexo";
 
 export const COLABORADORES_PADRAO: Colaborador[] = [
-  { id: "1001", nome: "Letícia Cabral", matricula: "1001", cargo: "Gestor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "senai123", timestampCadastro: Date.now() - 50000000 },
+  { id: "1001", nome: "Letícia Cabral", matricula: "1001", cargo: "Técnico", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "senai123", timestampCadastro: Date.now() - 50000000 },
   { id: "1002", nome: "Isabelle Nunes", matricula: "1002", cargo: "Técnico", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "tecnico12", timestampCadastro: Date.now() - 40000000 },
   { id: "1003", nome: "Maria Victória", matricula: "1003", cargo: "Técnico", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "tecnico34", timestampCadastro: Date.now() - 30000000 },
   { id: "1004", nome: "Nicole Caroline", matricula: "1004", cargo: "Instrutor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "mecanico1", timestampCadastro: Date.now() - 20000000 },
-  { id: "1005", nome: "Débora Letícia", matricula: "1005", cargo: "Gestor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "gestor10", timestampCadastro: Date.now() - 10000000 },
+  { id: "1005", nome: "Débora Letícia", matricula: "1005", cargo: "Técnico", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "gestor10", timestampCadastro: Date.now() - 10000000 },
   { id: "1006", nome: "Carlos Mendes", matricula: "1006", cargo: "Instrutor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "mecanico2", timestampCadastro: Date.now() - 5000000 },
   { id: "1007", nome: "Ana Beatriz Sousa", matricula: "1007", cargo: "Técnico", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "tecnico07", timestampCadastro: Date.now() - 4000000 },
   { id: "1008", nome: "Roberto Almeida", matricula: "1008", cargo: "Instrutor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "instrutor1", timestampCadastro: Date.now() - 3000000 },
   { id: "1009", nome: "Fernanda Costa", matricula: "1009", cargo: "Técnico", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "tecnico3", timestampCadastro: Date.now() - 2000000 },
   { id: "1010", nome: "João Pedro Ramos", matricula: "1010", cargo: "Instrutor", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "instrutor2", timestampCadastro: Date.now() - 1000000 },
-  { id: "1011", nome: "Alexandre da Silva", matricula: "1011", cargo: "Gestor", cargoDetalhado: "TECNICO EDUCACAO", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "alexandre123", timestampCadastro: Date.now() - 500000 },
-  { id: "1012", nome: "Wesley de Souza Faria", matricula: "1012", cargo: "Gestor", cargoDetalhado: "TECNICO(A) EDUCACAO", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "wesley123", timestampCadastro: Date.now() - 450000 },
+  { id: "1011", nome: "Alexandre da Silva", matricula: "1011", cargo: "Técnico", cargoDetalhado: "TECNICO EDUCACAO", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "alexandre123", timestampCadastro: Date.now() - 500000 },
+  { id: "1012", nome: "Wesley de Souza Faria", matricula: "1012", cargo: "Técnico", cargoDetalhado: "TECNICO(A) EDUCACAO", unidade: "FIRJAN SENAI VOLTA REDONDA AERO CLUBE", senhaText: "wesley123", timestampCadastro: Date.now() - 450000 },
 ];
 
 export const EQUIPAMENTOS_PADRAO: Equipamento[] = [

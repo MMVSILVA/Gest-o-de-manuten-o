@@ -171,6 +171,46 @@ export const DashboardView: React.FC<Props> = ({
     return ordens.filter(o => o.status !== "Concluído" && Date.now() > o.timestamp);
   }, [ordens]);
 
+  const pecasCriticas = useMemo(() => {
+    const list: Array<{
+      equipamentoNome: string;
+      grupoNome: string;
+      pecaNome: string;
+      quantidade: number;
+      nivelMinimo: number;
+    }> = [];
+
+    equipamentos.forEach(eq => {
+      if (eq.gruposPecas) {
+        eq.gruposPecas.forEach(gp => {
+          // Normalize and fallback if pecasDetalhes is missing but pecas is defined
+          const pecas = gp.pecasDetalhes || (gp.pecas || []).map((pStr, idx) => ({
+            id: String(idx),
+            nome: pStr,
+            quantidade: 0,
+            nivelMinimo: 1
+          }));
+
+          pecas.forEach(p => {
+            const qtd = p.quantidade ?? 0;
+            const min = p.nivelMinimo ?? 0;
+            if (qtd < min) {
+              list.push({
+                equipamentoNome: eq.nome,
+                grupoNome: gp.nome,
+                pecaNome: p.nome,
+                quantidade: qtd,
+                nivelMinimo: min
+              });
+            }
+          });
+        });
+      }
+    });
+
+    return list;
+  }, [equipamentos]);
+
   return (
     <div className="space-y-8 text-slate-800">
       
@@ -344,6 +384,65 @@ export const DashboardView: React.FC<Props> = ({
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alerta de Estoque Crítico de Peças */}
+      {pecasCriticas.length > 0 && (
+        <div id="alerta-estoque-critico" className="bg-amber-50 border border-amber-350 p-5 rounded-2xl shadow-xs text-slate-950 space-y-4 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200 pb-3">
+            <div className="flex items-center space-x-3 text-amber-900">
+              <div className="bg-amber-500 text-slate-950 p-2 rounded-xl flex items-center justify-center font-bold shadow-xs">
+                <Wrench className="w-5 h-5 text-slate-950" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm text-amber-950 uppercase tracking-tight flex items-center gap-1.5">
+                  ⚠️ ALERTA: ESTOQUE DE PEÇAS CRÍTICAS BAIXO!
+                </h3>
+                <p className="text-amber-850 text-xs mt-0.5 font-semibold leading-relaxed">
+                  Os itens listados abaixo estão com níveis de estoque abaixo do nível mínimo tolerável. Reposição exigida.
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-black uppercase bg-amber-500 text-slate-950 px-3 py-1.5 rounded-full tracking-wider shadow-xs select-none">
+              Reposição Recomentada
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pecasCriticas.map((item, idx) => (
+              <div key={idx} id={`peca-critica-card-${idx}`} className="bg-white p-4 rounded-xl border border-amber-200 shadow-xs hover:border-amber-400 transition flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center justify-between gap-2.5">
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-900 text-white font-mono truncate max-w-[150px]" title={item.equipamentoNome}>
+                      {item.equipamentoNome}
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-600 bg-amber-100/50 px-2.5 py-0.5 rounded-full font-mono">
+                      Qtd: {item.quantidade} / Mín: {item.nivelMinimo}
+                    </span>
+                  </div>
+
+                  <h4 className="font-extrabold text-xs text-slate-900 mt-2">
+                    {item.pecaNome}
+                  </h4>
+                  <p className="text-[10px] text-slate-500 mt-0.5 font-bold uppercase tracking-wider">
+                    Grupo: {item.grupoNome}
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-bold">
+                  <span className="text-amber-600">Abaixo do nível mínimo</span>
+                  <button
+                    onClick={() => onNavigate('equipamentos')}
+                    className="text-blue-600 hover:text-blue-800 hover:underline flex items-center space-x-0.5 cursor-pointer font-extrabold"
+                  >
+                    <span>Ver Ativo</span>
+                    <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

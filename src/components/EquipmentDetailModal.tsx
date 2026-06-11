@@ -11,7 +11,7 @@ import {
   Clock, Calendar, AlertTriangle, Activity, UserCheck,
   ChevronDown, ChevronUp, Trash2, Edit3, Save, RotateCcw, Wrench
 } from "lucide-react";
-import { Equipamento, OrdemServico, Colaborador, DefeitoFoto, GrupoPeca } from "../types";
+import { Equipamento, OrdemServico, Colaborador, DefeitoFoto, GrupoPeca, PecaItem } from "../types";
 
 interface Props {
   eq: Equipamento;
@@ -44,24 +44,37 @@ export const EquipmentDetailModal: React.FC<Props> = ({
   const [zoomScale, setZoomScale] = useState(1);
   const [ordemSelecionada, setOrdemSelecionada] = useState<OrdemServico | null>(null);
 
-  // States para Edição Completa (Gestor)
+  // States para Edição Completa (Gestor / Técnico com Permissões)
   const [isEditing, setIsEditing] = useState(false);
   const [editNome, setEditNome] = useState(eq.nome);
   const [editModelo, setEditModelo] = useState(eq.modelo);
   const [editSetor, setEditSetor] = useState(eq.setor);
   const [editStatus, setEditStatus] = useState(eq.status);
   const [editResponsavel, setEditResponsavel] = useState(eq.responsavel);
+  const [editMtbf, setEditMtbf] = useState(eq.mtbf !== undefined ? eq.mtbf : 0);
+  const [editMttr, setEditMttr] = useState(eq.mttr !== undefined ? eq.mttr : 0);
+  const [editDataEntrada, setEditDataEntrada] = useState(eq.dataEntrada || "");
+  const [editPecaMaisProblematica, setEditPecaMaisProblematica] = useState(eq.pecaMaisProblematica || "");
+  const [editCriticidadePeca, setEditCriticidadePeca] = useState<'Baixa' | 'Média' | 'Alta' | 'Crítica'>(eq.criticidadePeca || "Média");
 
   // States para Divisão de Grupos de Peças
   const [gruposExpandidos, setGruposExpandidos] = useState<Record<string, boolean>>({});
   const [novoGrupoNome, setNovoGrupoNome] = useState("");
   const [novaPecaNome, setNovaPecaNome] = useState<Record<string, string>>({}); // gp_id -> peca_nome
+  const [novaPecaQtd, setNovaPecaQtd] = useState<Record<string, number>>({});
+  const [novaPecaMin, setNovaPecaMin] = useState<Record<string, number>>({});
+
+  const [apenasConcluidas, setApenasConcluidas] = useState(true);
 
   // Filtra as O.S. correspondentes a esta máquina
   const historicoOS = ordens.filter(o => 
     o.equipamento.toLowerCase().includes(eq.nome.split(" ")[0].toLowerCase()) ||
     o.equipamento.toLowerCase().includes(eq.modelo.toLowerCase())
   );
+
+  const historicoOSExibidas = apenasConcluidas
+    ? historicoOS.filter(o => o.status === "Concluído")
+    : historicoOS;
 
   const handleUpdateNome = () => {
     if (!nomeInterno.trim()) return;
@@ -71,7 +84,7 @@ export const EquipmentDetailModal: React.FC<Props> = ({
     });
   };
 
-  // Funções de Edição Completa para Gestor
+  // Funções de Edição Completa para Gestor / Técnico
   const handleSalvarEdicaoCompleta = () => {
     if (!editNome.trim()) {
       alert("O nome do equipamento é obrigatório para atualização.");
@@ -83,7 +96,12 @@ export const EquipmentDetailModal: React.FC<Props> = ({
       modelo: editModelo.trim() || "N/A",
       setor: editSetor.trim(),
       status: editStatus,
-      responsavel: editResponsavel.trim() || "Geral"
+      responsavel: editResponsavel.trim() || "Geral",
+      mtbf: Number(editMtbf) || undefined,
+      mttr: Number(editMttr) || undefined,
+      dataEntrada: editDataEntrada || undefined,
+      pecaMaisProblematica: editPecaMaisProblematica || undefined,
+      criticidadePeca: editCriticidadePeca
     });
     setIsEditing(false);
   };
@@ -99,14 +117,30 @@ export const EquipmentDetailModal: React.FC<Props> = ({
   };
 
   // Funções de Gestão de Grupos de Peças e Peças
+  const obterGruposPecasLogica = (): GrupoPeca[] => {
+    return (eq.gruposPecas || []).map(g => {
+      if (!g.pecasDetalhes) {
+        const pecasDetalhes: PecaItem[] = g.pecas.map((nome, idx) => ({
+          id: `${g.id}_p_${idx}_${nome}`,
+          nome,
+          quantidade: 5,
+          nivelMinimo: 2
+        }));
+        return { ...g, pecasDetalhes };
+      }
+      return g;
+    });
+  };
+
   const handleAdicionarGrupoPeca = () => {
     if (!novoGrupoNome.trim()) return;
     const novoGP: GrupoPeca = {
       id: "gp_" + Date.now(),
       nome: novoGrupoNome.trim(),
-      pecas: []
+      pecas: [],
+      pecasDetalhes: []
     };
-    const nextGrupos = [...(eq.gruposPecas || []), novoGP];
+    const nextGrupos = [...obterGruposPecasLogica(), novoGP];
     onUpdateEquipamento({
       ...eq,
       gruposPecas: nextGrupos
@@ -117,7 +151,7 @@ export const EquipmentDetailModal: React.FC<Props> = ({
 
   const handleRemoverGrupoPeca = (gpId: string) => {
     if (window.confirm("Deseja realmente remover este grupo de peças por completo?")) {
-      const nextGrupos = (eq.gruposPecas || []).filter(g => g.id !== gpId);
+      const nextGrupos = obterGruposPecasLogica().filter(g => g.id !== gpId);
       onUpdateEquipamento({
         ...eq,
         gruposPecas: nextGrupos
@@ -129,11 +163,23 @@ export const EquipmentDetailModal: React.FC<Props> = ({
     const nomePeca = novaPecaNome[gpId]?.trim();
     if (!nomePeca) return;
 
-    const nextGrupos = (eq.gruposPecas || []).map(g => {
+    const qtd = novaPecaQtd[gpId] !== undefined ? novaPecaQtd[gpId] : 5;
+    const min = novaPecaMin[gpId] !== undefined ? novaPecaMin[gpId] : 2;
+
+    const novaPecaItem: PecaItem = {
+      id: "p_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+      nome: nomePeca,
+      quantidade: qtd,
+      nivelMinimo: min
+    };
+
+    const nextGrupos = obterGruposPecasLogica().map(g => {
       if (g.id === gpId) {
+        const pecasDetalhes = [...(g.pecasDetalhes || []), novaPecaItem];
         return {
           ...g,
-          pecas: [...g.pecas, nomePeca]
+          pecas: [...g.pecas, nomePeca],
+          pecasDetalhes
         };
       }
       return g;
@@ -145,15 +191,59 @@ export const EquipmentDetailModal: React.FC<Props> = ({
     });
 
     setNovaPecaNome(prev => ({ ...prev, [gpId]: "" }));
+    setNovaPecaQtd(prev => ({ ...prev, [gpId]: 5 }));
+    setNovaPecaMin(prev => ({ ...prev, [gpId]: 2 }));
   };
 
   const handleRemoverPeca = (gpId: string, pecaIndex: number) => {
-    const nextGrupos = (eq.gruposPecas || []).map(g => {
+    const nextGrupos = obterGruposPecasLogica().map(g => {
       if (g.id === gpId) {
+        const pecasDetalhes = (g.pecasDetalhes || []).filter((_, idx) => idx !== pecaIndex);
         return {
           ...g,
-          pecas: g.pecas.filter((_, idx) => idx !== pecaIndex)
+          pecas: g.pecas.filter((_, idx) => idx !== pecaIndex),
+          pecasDetalhes
         };
+      }
+      return g;
+    });
+
+    onUpdateEquipamento({
+      ...eq,
+      gruposPecas: nextGrupos
+    });
+  };
+
+  const handleUpdateEstoque = (gpId: string, pecaId: string, delta: number) => {
+    const nextGrupos = obterGruposPecasLogica().map(g => {
+      if (g.id === gpId) {
+        const pecasDetalhes = (g.pecasDetalhes || []).map(p => {
+          if (p.id === pecaId) {
+            return { ...p, quantidade: Math.max(0, p.quantidade + delta) };
+          }
+          return p;
+        });
+        return { ...g, pecasDetalhes };
+      }
+      return g;
+    });
+
+    onUpdateEquipamento({
+      ...eq,
+      gruposPecas: nextGrupos
+    });
+  };
+
+  const handleUpdateNivelMinimo = (gpId: string, pecaId: string, delta: number) => {
+    const nextGrupos = obterGruposPecasLogica().map(g => {
+      if (g.id === gpId) {
+        const pecasDetalhes = (g.pecasDetalhes || []).map(p => {
+          if (p.id === pecaId) {
+            return { ...p, nivelMinimo: Math.max(0, p.nivelMinimo + delta) };
+          }
+          return p;
+        });
+        return { ...g, pecasDetalhes };
       }
       return g;
     });
@@ -353,6 +443,62 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                       </select>
                     </div>
 
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Data de Entrada</label>
+                      <input 
+                        type="text" 
+                        value={editDataEntrada} 
+                        onChange={e => setEditDataEntrada(e.target.value)} 
+                        placeholder="Ex: 11/06/2026"
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">MTBF (Horas)</label>
+                      <input 
+                        type="number" 
+                        value={editMtbf} 
+                        onChange={e => setEditMtbf(Number(e.target.value))} 
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">MTTR (Horas)</label>
+                      <input 
+                        type="number" 
+                        value={editMttr} 
+                        onChange={e => setEditMttr(Number(e.target.value))} 
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Peça Mais Problemática</label>
+                      <input 
+                        type="text" 
+                        value={editPecaMaisProblematica} 
+                        onChange={e => setEditPecaMaisProblematica(e.target.value)} 
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                        placeholder="Parte/componente que mais falha"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Análise Criticidade da Peça</label>
+                      <select 
+                        value={editCriticidadePeca} 
+                        onChange={e => setEditCriticidadePeca(e.target.value as any)} 
+                        className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold cursor-pointer"
+                      >
+                        <option value="Baixa">Baixa</option>
+                        <option value="Média">Média</option>
+                        <option value="Alta">Alta</option>
+                        <option value="Crítica">Crítica</option>
+                      </select>
+                    </div>
+
                     <div className="flex space-x-2 pt-2">
                       <button
                         onClick={handleSalvarEdicaoCompleta}
@@ -368,6 +514,11 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                           setEditSetor(eq.setor);
                           setEditResponsavel(eq.responsavel);
                           setEditStatus(eq.status);
+                          setEditMtbf(eq.mtbf !== undefined ? eq.mtbf : 0);
+                          setEditMttr(eq.mttr !== undefined ? eq.mttr : 0);
+                          setEditDataEntrada(eq.dataEntrada || "");
+                          setEditPecaMaisProblematica(eq.pecaMaisProblematica || "");
+                          setEditCriticidadePeca(eq.criticidadePeca || "Média");
                           setIsEditing(false);
                         }}
                         className="p-1.5 px-3 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center space-x-1 cursor-pointer flex-1 justify-center"
@@ -392,8 +543,34 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                       <span className="font-bold text-slate-800">{eq.responsavel}</span>
                     </div>
 
-                    {/* Botões de Ação Exclusivos do Gestor */}
-                    {colaboradorLogado?.cargo === 'Gestor' && (
+                    <div className="flex justify-between text-xs text-slate-500 border-b border-slate-100 pb-1.5">
+                      <span>Data de Entrada:</span>
+                      <span className="font-bold text-slate-800">{eq.dataEntrada || "Não informada"}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-500 border-b border-slate-100 pb-1.5">
+                      <span>MTBF Operacional:</span>
+                      <span className="font-mono font-bold text-slate-800">{eq.mtbf !== undefined ? `${eq.mtbf}h` : "N/D"}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-500 border-b border-slate-100 pb-1.5">
+                      <span>MTTR Corretiva:</span>
+                      <span className="font-mono font-bold text-slate-800">{eq.mttr !== undefined ? `${eq.mttr}h` : "N/D"}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-500 border-b border-slate-100 pb-1.5">
+                      <span>Parte Mais Problemática:</span>
+                      <span className="font-bold text-slate-800">{eq.pecaMaisProblematica || "Não mapeado"}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-500 border-b border-slate-100 pb-1.5">
+                      <span>Criticidade da Peça:</span>
+                      <span className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded-md tracking-wider ${
+                        eq.criticidadePeca === 'Crítica' ? 'bg-red-50 text-red-700 border border-red-105' :
+                        eq.criticidadePeca === 'Alta' ? 'bg-orange-50 text-orange-700 border border-orange-100' :
+                        eq.criticidadePeca === 'Baixa' ? 'bg-slate-50 text-slate-700 border border-slate-150' :
+                        'bg-yellow-50 text-yellow-700 border border-yellow-150'
+                      }`}>{eq.criticidadePeca || "Média"}</span>
+                    </div>
+
+                    {/* Botões de Ação Exclusivos do Gestor / Técnico */}
+                    {colaboradorLogado?.cargo === 'Técnico' && (
                       <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                         <button
                           onClick={() => {
@@ -402,9 +579,14 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                             setEditSetor(eq.setor);
                             setEditResponsavel(eq.responsavel);
                             setEditStatus(eq.status);
+                            setEditMtbf(eq.mtbf !== undefined ? eq.mtbf : 0);
+                            setEditMttr(eq.mttr !== undefined ? eq.mttr : 0);
+                            setEditDataEntrada(eq.dataEntrada || "");
+                            setEditPecaMaisProblematica(eq.pecaMaisProblematica || "");
+                            setEditCriticidadePeca(eq.criticidadePeca || "Média");
                             setIsEditing(true);
                           }}
-                          className="py-1.5 bg-blue-50 hover:bg-blue-105 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center space-x-1 transition cursor-pointer border border-blue-100"
+                          className="py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-605 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center space-x-1 transition cursor-pointer border border-blue-100"
                         >
                           <Edit3 className="w-3 h-3 text-blue-500" />
                           <span>Editar</span>
@@ -527,9 +709,9 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                     }`}
                   >
                     <Clock className="w-4 h-4 text-inherit" />
-                    <span>Histórico Completo</span>
-                    <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 border border-slate-200">
-                      {historicoOS.length}
+                    <span>Histórico de Intervenções</span>
+                    <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 border border-slate-200" title="Históricos finalizados para este ativo">
+                      {historicoOS.filter(o => o.status === "Concluído").length}
                     </span>
                   </button>
 
@@ -740,20 +922,38 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                 {abaAtiva === 'historico' && (
                   /* LINHA DO TEMPO VERTICAL do Histórico Completo de Intervenções Pastas */
                   <div className="space-y-6 animate-in fade-in duration-200">
-                    <div className="border-b pb-3 border-slate-155 pb-1 mb-2">
-                      <h4 className="text-sm font-bold text-slate-900">Linha do Tempo de Intervenções Operacionais</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Rastreabilidade geral e histórico completo de engenharia e confiabilidade vinculados à máquina.</p>
+                    <div className="border-b pb-3 border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900">Histórico de Intervenções Técnicas</h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Rastreabilidade geral e histórico de ordens de serviço finalizadas neste ativo.</p>
+                      </div>
+
+                      {/* Toggle para filtrar apenas as finalizadas */}
+                      <label className="inline-flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl cursor-pointer hover:bg-slate-100 transition select-none shrink-0">
+                        <input 
+                          type="checkbox"
+                          checked={apenasConcluidas}
+                          onChange={e => setApenasConcluidas(e.target.checked)}
+                          className="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                        />
+                        <span className="text-[11px] font-extrabold text-slate-650">Apenas Finalizadas</span>
+                      </label>
                     </div>
 
-                    {historicoOS.length === 0 ? (
+                    {historicoOSExibidas.length === 0 ? (
                       <div className="text-center py-12 bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl p-6">
                         <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2.5 animate-pulse" />
-                        <h5 className="font-bold text-xs text-slate-700">Sem registros no histórico</h5>
-                        <p className="text-[10.5px] text-slate-450 mt-1">Nenhuma Ordem de Serviço foi emitida ou associada aos termos de buscas deste ativo ainda.</p>
+                        <h5 className="font-bold text-xs text-slate-700">Sem registros condizentes</h5>
+                        <p className="text-[10.5px] text-slate-450 mt-1">
+                          {apenasConcluidas 
+                            ? "Nenhuma Ordem de Serviço foi concluída/finalizada para este ativo ainda." 
+                            : "Nenhuma Ordem de Serviço foi emitida ou associada a este ativo ainda."
+                          }
+                        </p>
                       </div>
                     ) : (
                       <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-[1.5px] before:bg-slate-200">
-                        {historicoOS.map((os) => {
+                        {historicoOSExibidas.map((os) => {
                           const isConcluido = os.status === "Concluído";
                           const isAndamento = os.status === "Em Andamento";
                           return (
@@ -768,7 +968,7 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                               }`} />
 
                               {/* Conteúdo do Card */}
-                              <div className="bg-slate-50/40 hover:bg-slate-55 p-4 rounded-xl border border-slate-200/80 transition group-hover/time:border-slate-300 duration-200 space-y-2.5">
+                              <div className="bg-slate-50/40 hover:bg-slate-50 p-4 rounded-xl border border-slate-200/80 transition group-hover/time:border-slate-300 duration-200 space-y-2.5">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2 border-b border-dashed border-slate-200">
                                   <div className="flex items-center space-x-1.5">
                                     <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded ${
@@ -842,8 +1042,8 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                       </p>
                     </div>
 
-                    {/* Cadastrar Novo Grupo de Peças (Disponível para Gestores / Técnicos) */}
-                    {(colaboradorLogado?.cargo === 'Gestor' || colaboradorLogado?.cargo === 'Técnico') && (
+                    {/* Cadastrar Novo Grupo de Peças (Disponível para Técnicos com Permissões) */}
+                    {colaboradorLogado?.cargo === 'Técnico' && (
                       <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
                         <label className="block text-[9px] font-black text-slate-500 uppercase tracking-wider">Criar Novo Grupo Mecânico</label>
                         <div className="flex space-x-2">
@@ -874,8 +1074,9 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {eq.gruposPecas.map((grupo) => {
+                        {obterGruposPecasLogica().map((grupo) => {
                           const isExpandido = !!gruposExpandidos[grupo.id];
+                          const piecesList = grupo.pecasDetalhes || [];
                           return (
                             <div key={grupo.id} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
                               
@@ -894,12 +1095,12 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                                   )}
                                   <span className="font-extrabold text-xs text-slate-800 uppercase tracking-wide">{grupo.nome}</span>
                                   <span className="font-mono text-[9px] text-slate-400 bg-slate-100 p-1 px-1.5 rounded-full border">
-                                    {grupo.pecas.length} {grupo.pecas.length === 1 ? 'peça' : 'peças'}
+                                    {piecesList.length} {piecesList.length === 1 ? 'peça' : 'peças'}
                                   </span>
                                 </div>
 
-                                {/* Botão exclusão de grupo para Gestores */}
-                                {colaboradorLogado?.cargo === 'Gestor' && (
+                                {/* Botão exclusão de grupo para Técnicos */}
+                                {colaboradorLogado?.cargo === 'Técnico' && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation(); // Evita expandir/retrair a linha ao clique
@@ -918,54 +1119,131 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                                 <div className="p-4 bg-white space-y-3 border-t border-slate-100 animate-in slide-in-from-top-2 duration-150">
                                   
                                   {/* Sublista de peças */}
-                                  {grupo.pecas.length === 0 ? (
+                                  {piecesList.length === 0 ? (
                                     <p className="text-xs text-slate-400 italic">Sem peças cadastradas nesta seção de componentes.</p>
                                   ) : (
                                     <ul className="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden">
-                                      {grupo.pecas.map((peca, idx) => (
-                                        <li key={idx} className="flex items-center justify-between p-2 px-3 hover:bg-slate-50/40 text-xs">
-                                          <div className="flex items-center space-x-2 text-slate-700">
-                                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full shrink-0" />
-                                            <span className="font-medium">{peca}</span>
-                                          </div>
-                                          
-                                          {/* Excluir Peça */}
-                                          {colaboradorLogado?.cargo === 'Gestor' && (
-                                            <button
-                                              onClick={() => handleRemoverPeca(grupo.id, idx)}
-                                              className="p-0.5 text-slate-350 hover:text-red-500 transition cursor-pointer"
-                                              title="Excluir Peça"
-                                            >
-                                              <X className="w-3.5 h-3.5" />
-                                            </button>
-                                          )}
-                                        </li>
-                                      ))}
+                                      {piecesList.map((peca, idx) => {
+                                        const isCritico = peca.quantidade < peca.nivelMinimo;
+                                        return (
+                                          <li key={peca.id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 px-4 hover:bg-slate-50/40 text-xs gap-3">
+                                            <div className="flex items-center space-x-2 text-slate-700 min-w-0 flex-1">
+                                              <div className={`w-2 h-2 rounded-full shrink-0 ${isCritico ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
+                                              <span className="font-extrabold text-slate-850 truncate">{peca.nome}</span>
+                                            </div>
+                                            
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 shrink-0">
+                                              {/* Estoque Atual */}
+                                              <div className="flex items-center space-x-1">
+                                                <span className="text-[10px] text-slate-450 font-bold uppercase mr-1">Qtd:</span>
+                                                {colaboradorLogado?.cargo === 'Técnico' ? (
+                                                  <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-1 py-0.5">
+                                                    <button 
+                                                      onClick={() => handleUpdateEstoque(grupo.id, peca.id, -1)}
+                                                      className="w-5 h-5 bg-white hover:bg-slate-200 text-slate-700 rounded flex items-center justify-center font-bold text-xs"
+                                                    >-</button>
+                                                    <span className={`font-mono font-black text-xs px-2 min-w-[20px] text-center ${isCritico ? 'text-red-650' : 'text-slate-850'}`}>
+                                                      {peca.quantidade}
+                                                    </span>
+                                                    <button 
+                                                      onClick={() => handleUpdateEstoque(grupo.id, peca.id, 1)}
+                                                      className="w-5 h-5 bg-white hover:bg-slate-200 text-slate-700 rounded flex items-center justify-center font-bold text-xs"
+                                                    >+</button>
+                                                  </div>
+                                                ) : (
+                                                  <span className={`font-mono font-black text-xs ${isCritico ? 'text-red-655' : 'text-slate-800'}`}>
+                                                    {peca.quantidade}
+                                                  </span>
+                                                )}
+                                              </div>
+
+                                              {/* Nível Mínimo */}
+                                              <div className="flex items-center space-x-1">
+                                                <span className="text-[10px] text-slate-455 font-bold uppercase mr-1">Mínimo:</span>
+                                                {colaboradorLogado?.cargo === 'Técnico' ? (
+                                                  <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-1 py-0.5">
+                                                    <button 
+                                                      onClick={() => handleUpdateNivelMinimo(grupo.id, peca.id, -1)}
+                                                      className="w-5 h-5 bg-white hover:bg-slate-200 text-slate-700 rounded flex items-center justify-center font-bold text-xs"
+                                                    >-</button>
+                                                    <span className="font-mono text-slate-700 font-extrabold px-2 min-w-[18px] text-center">{peca.nivelMinimo}</span>
+                                                    <button 
+                                                      onClick={() => handleUpdateNivelMinimo(grupo.id, peca.id, 1)}
+                                                      className="w-5 h-5 bg-white hover:bg-slate-200 text-slate-700 rounded flex items-center justify-center font-bold text-xs"
+                                                    >+</button>
+                                                  </div>
+                                                ) : (
+                                                  <span className="font-mono text-slate-700 font-bold">{peca.nivelMinimo}</span>
+                                                )}
+                                              </div>
+
+                                              {isCritico && (
+                                                <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border border-red-100">
+                                                  Crítico ⚠️
+                                                </span>
+                                              )}
+
+                                              {/* Excluir Peça */}
+                                              {colaboradorLogado?.cargo === 'Técnico' && (
+                                                <button
+                                                  onClick={() => handleRemoverPeca(grupo.id, idx)}
+                                                  className="p-1 text-slate-350 hover:text-red-500 hover:bg-slate-100 rounded transition cursor-pointer"
+                                                  title="Excluir Peça"
+                                                >
+                                                  <X className="w-3.5 h-3.5" />
+                                                </button>
+                                              )}
+                                            </div>
+                                          </li>
+                                        );
+                                      })}
                                     </ul>
                                   )}
 
-                                  {/* Input para adicionar peça (Gestores e Técnicos) */}
-                                  {(colaboradorLogado?.cargo === 'Gestor' || colaboradorLogado?.cargo === 'Técnico') && (
-                                    <div className="flex items-center space-x-2 pt-2 border-t border-dashed border-slate-100">
-                                      <input 
-                                        type="text"
-                                        placeholder="Nova peça (ex: Rolamento SKF 6204)..."
-                                        value={novaPecaNome[grupo.id] || ""}
-                                        onChange={e => {
-                                          const val = e.target.value;
-                                          setNovaPecaNome(prev => ({ ...prev, [grupo.id]: val }));
-                                        }}
-                                        onKeyDown={e => {
-                                          if (e.key === 'Enter') handleAdicionarPeca(grupo.id);
-                                        }}
-                                        className="flex-1 px-3 py-1.5 border border-slate-200 bg-slate-50 rounded-lg text-xs focus:outline-none text-slate-800"
-                                      />
-                                      <button
-                                        onClick={() => handleAdicionarPeca(grupo.id)}
-                                        className="py-1.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold transition cursor-pointer shrink-0"
-                                      >
-                                        + Adicionar
-                                      </button>
+                                  {/* Formulário Rich para Adição de Peça com Níveis de Estoque (Disponível para Técnicos) */}
+                                  {colaboradorLogado?.cargo === 'Técnico' && (
+                                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 mt-3 space-y-3.5">
+                                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Cadastrar Peça Sobressalente</div>
+                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div>
+                                          <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nome do Componente</label>
+                                          <input 
+                                            type="text"
+                                            placeholder="Ex: Correia Dentada V-Belt..."
+                                            value={novaPecaNome[grupo.id] || ""}
+                                            onChange={e => setNovaPecaNome(prev => ({ ...prev, [grupo.id]: e.target.value }))}
+                                            className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Estoque Inicial</label>
+                                          <input 
+                                            type="number"
+                                            placeholder="5"
+                                            value={novaPecaQtd[grupo.id] !== undefined ? novaPecaQtd[grupo.id] : ""}
+                                            onChange={e => setNovaPecaQtd(prev => ({ ...prev, [grupo.id]: Number(e.target.value) }))}
+                                            className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nível Mínimo Alerta</label>
+                                          <input 
+                                            type="number"
+                                            placeholder="2"
+                                            value={novaPecaMin[grupo.id] !== undefined ? novaPecaMin[grupo.id] : ""}
+                                            onChange={e => setNovaPecaMin(prev => ({ ...prev, [grupo.id]: Number(e.target.value) }))}
+                                            className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="flex justify-end pt-1">
+                                        <button
+                                          onClick={() => handleAdicionarPeca(grupo.id)}
+                                          className="py-1.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition cursor-pointer"
+                                        >
+                                          + Registrar Componente
+                                        </button>
+                                      </div>
                                     </div>
                                   )}
 

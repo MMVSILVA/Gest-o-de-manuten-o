@@ -118,9 +118,7 @@ export const PerfilView: React.FC<Props> = ({
               onChange={e => setCargo(e.target.value as Cargo)}
               className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm bg-white"
             >
-              <option value="Mecânico">Mecânico (Apenas Executar O.S.)</option>
-              <option value="Técnico">Técnico de Manutenção (Gerar O.S.)</option>
-              <option value="Gestor">Gestor / Supervisor (Permissão Plena)</option>
+              <option value="Técnico">Técnico (Permissão Plena / Gestor)</option>
               <option value="Instrutor">Instrutor SENAI (Apenas Visualizar)</option>
             </select>
           </div>

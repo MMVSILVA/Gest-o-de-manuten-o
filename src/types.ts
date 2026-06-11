@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type Cargo = 'Técnico' | 'Gestor' | 'Instrutor';
+export type Cargo = 'Técnico' | 'Instrutor';
 
 export interface Colaborador {
   id: string;
@@ -23,10 +23,18 @@ export interface DefeitoFoto {
   data: string;
 }
 
+export interface PecaItem {
+  id: string;
+  nome: string;
+  quantidade: number; // Estoque atual
+  nivelMinimo: number; // Nível mínimo
+}
+
 export interface GrupoPeca {
   id: string;
   nome: string; // e.g. "Sistema de Transmissão", "Parte Elétrica"
   pecas: string[]; // e.g. ["Rolamento de Agulhas", "Servo Motor AC"]
+  pecasDetalhes?: PecaItem[];
 }
 
 export interface Equipamento {
@@ -44,6 +52,11 @@ export interface Equipamento {
   };
   fotos: DefeitoFoto[];
   gruposPecas?: GrupoPeca[];
+  mtbf?: number; // em horas
+  mttr?: number; // em horas
+  dataEntrada?: string; // data de entrada do equipamento
+  pecaMaisProblematica?: string; // parte que dá mais problema
+  criticidadePeca?: 'Baixa' | 'Média' | 'Alta' | 'Crítica'; // análise criticidade
 }
 
 export interface OrdemServico {
