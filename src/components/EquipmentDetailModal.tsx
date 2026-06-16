@@ -8,8 +8,9 @@ import {
   X, ArrowLeft, Server, FileText, CheckCircle, UploadCloud, Eye, BookOpen, 
   PlayCircle, Camera, Sparkles, Wand2, BrainCircuit, Printer,
   ChevronLeft, ChevronRight, PlusCircle, MinusCircle,
-  Clock, Calendar, AlertTriangle, Activity, UserCheck,
-  ChevronDown, ChevronUp, Trash2, Edit3, Save, RotateCcw, Wrench
+  Clock, Calendar, AlertTriangle, Activity, UserCheck, ClipboardCheck,
+  ChevronDown, ChevronUp, Trash2, Edit3, Save, RotateCcw, Wrench,
+  Search, Filter, Check, ListTodo
 } from "lucide-react";
 import { Equipamento, OrdemServico, Colaborador, DefeitoFoto, GrupoPeca, PecaItem } from "../types";
 
@@ -24,6 +25,108 @@ interface Props {
   onAbrirNovaOs?: (nomeEquipamento: string) => void;
 }
 
+interface ChecklistItem {
+  id: string;
+  categoria: string;
+  item: string;
+  status: 'conforme' | 'nao-conforme' | 'critico' | 'na' | 'pendente';
+  observacao: string;
+}
+
+interface ChecklistSalvo {
+  id: string;
+  data: string;
+  timestamp: number;
+  usuario: string;
+  inconformidadesCount: number;
+  criticosCount: number;
+  itens: ChecklistItem[];
+  notaGeral: string;
+}
+
+const obterCoresCategoria = (categoria: string) => {
+  const cat = (categoria || "").toLowerCase();
+  if (cat.includes("segur")) {
+    return {
+      badgeBg: "bg-rose-100 text-rose-850 border-rose-200",
+      cardBg: "bg-rose-50/20 hover:bg-rose-50/40 border-rose-200",
+      textSide: "border-l-4 border-rose-500",
+      colorText: "text-rose-950",
+      emoji: "🛡️"
+    };
+  }
+  if (cat.includes("lubrif")) {
+    return {
+      badgeBg: "bg-amber-100 text-amber-850 border-amber-200",
+      cardBg: "bg-amber-50/25 hover:bg-amber-50/50 border-amber-200",
+      textSide: "border-l-4 border-amber-500",
+      colorText: "text-amber-950",
+      emoji: "🛢️"
+    };
+  }
+  if (cat.includes("mecan")) {
+    return {
+      badgeBg: "bg-blue-100 text-blue-850 border-blue-200",
+      cardBg: "bg-blue-50/20 hover:bg-blue-50/45 border-blue-200",
+      textSide: "border-l-4 border-blue-500",
+      colorText: "text-blue-950",
+      emoji: "⚙️"
+    };
+  }
+  if (cat.includes("eletr")) {
+    return {
+      badgeBg: "bg-purple-100 text-purple-850 border-purple-200",
+      cardBg: "bg-purple-50/20 hover:bg-purple-50/45 border-purple-200",
+      textSide: "border-l-4 border-purple-500",
+      colorText: "text-purple-950",
+      emoji: "⚡"
+    };
+  }
+  if (cat.includes("veda") || cat.includes("vaza")) {
+    return {
+      badgeBg: "bg-cyan-100 text-cyan-850 border-cyan-200",
+      cardBg: "bg-cyan-50/20 hover:bg-cyan-50/45 border-cyan-200",
+      textSide: "border-l-4 border-cyan-500",
+      colorText: "text-cyan-950",
+      emoji: "💧"
+    };
+  }
+  if (cat.includes("med") || cat.includes("ajust") || cat.includes("calib")) {
+    return {
+      badgeBg: "bg-fuchsia-100 text-fuchsia-850 border-fuchsia-200",
+      cardBg: "bg-fuchsia-50/20 hover:bg-fuchsia-50/45 border-fuchsia-200",
+      textSide: "border-l-4 border-fuchsia-500",
+      colorText: "text-fuchsia-950",
+      emoji: "📐"
+    };
+  }
+  if (cat.includes("refrig")) {
+    return {
+      badgeBg: "bg-sky-100 text-sky-850 border-sky-200",
+      cardBg: "bg-sky-50/20 hover:bg-sky-50/45 border-sky-200",
+      textSide: "border-l-4 border-sky-500",
+      colorText: "text-sky-950",
+      emoji: "❄️"
+    };
+  }
+  if (cat.includes("usin") || cat.includes("ferram")) {
+    return {
+      badgeBg: "bg-indigo-100 text-indigo-850 border-indigo-200",
+      cardBg: "bg-indigo-50/20 hover:bg-indigo-50/45 border-indigo-205",
+      textSide: "border-l-4 border-indigo-500",
+      colorText: "text-indigo-950",
+      emoji: "🎯"
+    };
+  }
+  return {
+    badgeBg: "bg-slate-100 text-slate-800 border-slate-200",
+    cardBg: "bg-slate-50/40 hover:bg-slate-50/70 border-slate-200",
+    textSide: "border-l-4 border-slate-450",
+    colorText: "text-slate-905",
+    emoji: "📋"
+  };
+};
+
 export const EquipmentDetailModal: React.FC<Props> = ({
   eq,
   ordens,
@@ -36,13 +139,161 @@ export const EquipmentDetailModal: React.FC<Props> = ({
 }) => {
   const [nomeInterno, setNomeInterno] = useState(eq.nome);
   const [sintomasIA, setSintomasIA] = useState("");
-  const [abaAtiva, setAbaAtiva] = useState<'docs-ia' | 'historico' | 'pecas'>('docs-ia');
+  const [abaAtiva, setAbaAtiva] = useState<'docs-ia' | 'historico' | 'pecas' | 'checklist'>('docs-ia');
   const [parecerIA, setParecerIA] = useState("");
   const [carregandoIA, setCarregandoIA] = useState(false);
   const [modalQR, setModalQR] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [ordemSelecionada, setOrdemSelecionada] = useState<OrdemServico | null>(null);
+
+  // States auxiliares de Checklist
+  const obterItensIniciaisChecklist = (): ChecklistItem[] => {
+    const nomeEqLow = eq.nome.toLowerCase();
+    let itensBasicos: { categoria: string; item: string }[] = [];
+
+    if (nomeEqLow.includes("compressor")) {
+      itensBasicos = [
+        { categoria: "Segurança", item: "Testar válvula de alívio e pressostato de limite" },
+        { categoria: "Lubrificação", item: "Verificar nível de óleo do compressor no visor de vidro" },
+        { categoria: "Mecânica", item: "Inspecionar tensão e alinhamento das correias de polia" },
+        { categoria: "Sistemas", item: "Drenar condensado acumulado no reservatório (purgador)" },
+        { categoria: "Vedação", item: "Inspecionar conexões para identificar possíveis vazamentos de ar" },
+        { categoria: "Elétrica", item: "Verificar fiação de alimentação e aterramento elétrico estático" },
+        { categoria: "Operacional", item: "Monitorar ruído, vibração ou aquecimento excessivo na partida" }
+      ];
+    } else if (nomeEqLow.includes("fresa") || nomeEqLow.includes("fresadora") || nomeEqLow.includes("torno") || nomeEqLow.includes("cnc") || nomeEqLow.includes("usinagem") || nomeEqLow.includes("furadeira")) {
+      itensBasicos = [
+        { categoria: "Segurança", item: "Verificar funcionamento do Botão de Emergência e travas" },
+        { categoria: "Lubrificação", item: "Verificar lubrificação hidráulica das guias e fusos de esferas" },
+        { categoria: "Refrigeração", item: "Verificar nível e consistência do líquido refrigerante/óleo de corte" },
+        { categoria: "Mecânica", item: "Eliminar cavacos acumulados na mesa e nos barramentos lineares" },
+        { categoria: "Usinagem", item: "Avaliar o desgaste dos insertos, pinças e suporte de ferramentas" },
+        { categoria: "Elétrica", item: "Inspecionar painel de comando e integridade elétrica dos servo-motores" },
+        { categoria: "Medição", item: "Verificar tolerância mecânica e zeramento dos eixos mecânicos/sensores" }
+      ];
+    } else {
+      itensBasicos = [
+        { categoria: "Segurança", item: "Testar botão de parada emergencial e proteções mecânicas ativas" },
+        { categoria: "Elétrica", item: "Inspecionar cabo de alimentação elétrico, blindagem e conectores" },
+        { categoria: "Mecânica", item: "Avaliar reaperto de parafusos de sustentação, polias, engrenagens e eixos" },
+        { categoria: "Sistemas", item: "Limpar filtros e verificar entradas e saídas de ar de refrigeração" },
+        { categoria: "Operacional", item: "Monitorar se há calor excessivo, vibrações sonoras ou odores estranhos" },
+        { categoria: "Sinalização", item: "Verificar indicadores visuais de status, displays ou lâmpadas piloto" }
+      ];
+    }
+
+    return itensBasicos.map((it, idx) => ({
+      id: `chk-${idx}`,
+      categoria: it.categoria,
+      item: it.item,
+      status: 'pendente',
+      observacao: ''
+    }));
+  };
+
+  const [itensChecklist, setItensChecklist] = useState<ChecklistItem[]>(obterItensIniciaisChecklist);
+  const [novoItemDesc, setNovoItemDesc] = useState("");
+  const [novoItemCat, setNovoItemCat] = useState("Especificidades");
+
+  // Filtros do Checklist
+  const [filtroTextoChecklist, setFiltroTextoChecklist] = useState("");
+  const [filtroStatusChecklist, setFiltroStatusChecklist] = useState("Todos");
+  const [filtroCategoriaChecklist, setFiltroCategoriaChecklist] = useState("Todos");
+
+  const [historicoChecklist, setHistoricoChecklist] = useState<ChecklistSalvo[]>(() => {
+    const saved = localStorage.getItem(`manutech_checklist_history_${eq.id}`);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const handleAdicionarItemChecklist = () => {
+    if (!novoItemDesc.trim()) return;
+    const novo: ChecklistItem = {
+      id: `chk-${Date.now()}`,
+      categoria: novoItemCat,
+      item: novoItemDesc.trim(),
+      status: 'pendente',
+      observacao: ''
+    };
+    setItensChecklist(prev => [...prev, novo]);
+    setNovoItemDesc("");
+  };
+
+  const handleMudarStatusItem = (itemId: string, status: 'pendente' | 'conforme' | 'nao-conforme' | 'critico' | 'na') => {
+    setItensChecklist(prev => prev.map(it => it.id === itemId ? { ...it, status } : it));
+  };
+
+  const handleMudarObservacaoItem = (itemId: string, observacao: string) => {
+    setItensChecklist(prev => prev.map(it => it.id === itemId ? { ...it, observacao } : it));
+  };
+
+  const handleResetChecklist = () => {
+    setItensChecklist(obterItensIniciaisChecklist());
+  };
+
+  const handleExcluirRegistroChecklist = (recId: string) => {
+    if (!window.confirm("Deseja realmente remover esta verificação histórica?")) return;
+    const novoHist = historicoChecklist.filter(h => h.id !== recId);
+    setHistoricoChecklist(novoHist);
+    localStorage.setItem(`manutech_checklist_history_${eq.id}`, JSON.stringify(novoHist));
+  };
+
+  const handleSalvarChecklist = () => {
+    const pendentesCount = itensChecklist.filter(it => it.status === 'pendente').length;
+    if (pendentesCount > 0) {
+      const prosseguir = window.confirm(
+        `Atenção: Existem ainda ${pendentesCount} itens sem verificação (pendentes).\nDeseja salvar e registrar o checklist com estes itens pendentes de vistoria?`
+      );
+      if (!prosseguir) return;
+    }
+
+    const nomeInsp = colaboradorLogado ? colaboradorLogado.nome : "Técnico Visitante";
+    const incorformidades = itensChecklist.filter(it => it.status === 'nao-conforme').length;
+    const criticos = itensChecklist.filter(it => it.status === 'critico').length;
+    
+    let nota = "Excelente";
+    if (criticos > 0) {
+      nota = "Intervenção Urgente!";
+    } else if (incorformidades > 0) {
+      nota = "Atenção Requerida";
+    }
+
+    const novoRegistro: ChecklistSalvo = {
+      id: `chk-salvo-${Date.now()}`,
+      data: new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      timestamp: Date.now(),
+      usuario: nomeInsp,
+      inconformidadesCount: incorformidades,
+      criticosCount: criticos,
+      itens: [...itensChecklist],
+      notaGeral: nota
+    };
+
+    const novoHist = [novoRegistro, ...historicoChecklist];
+    setHistoricoChecklist(novoHist);
+    localStorage.setItem(`manutech_checklist_history_${eq.id}`, JSON.stringify(novoHist));
+
+    alert(`Checklist registrado com sucesso!\nStatus Geral: ${nota}\n\nO histórico de inspeção deste ativo foi atualizado.`);
+
+    if (criticos > 0 || incorformidades > 0) {
+      const issues = itensChecklist
+        .filter(it => it.status === 'critico' || it.status === 'nao-conforme')
+        .map(it => `- [${it.status.slice(0, 3).toUpperCase()}] ${it.item} (${it.categoria}): ${it.observacao || 'Sem observação detalhada'}`)
+        .join("\n");
+
+      const confirmOs = window.confirm(
+        `Atenção: Foram encontradas ${criticos + incorformidades} desconformidades na máquina!\n\nDeseja gerar uma Ordem de Serviço Corretiva imediata no sistema preenchida com estes defeitos?`
+      );
+
+      if (confirmOs && onAbrirNovaOs) {
+        const prefilledDesc = `Checklist de Inspeção preventiva identificou as seguintes anomalias no equipamento:\n\n${issues}\n\nResponsável pela verificação: ${nomeInsp}.`;
+        localStorage.setItem("manutech_prefilled_os_desc", prefilledDesc);
+        localStorage.setItem("manutech_prefilled_os_tipo", "Corretiva");
+        localStorage.setItem("manutech_prefilled_os_prio", criticos > 0 ? "Alta" : "Média");
+        onAbrirNovaOs(eq.nome);
+      }
+    }
+  };
 
   // States para Edição Completa (Gestor / Técnico com Permissões)
   const [isEditing, setIsEditing] = useState(false);
@@ -699,6 +950,21 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                     <Sparkles className="w-4 h-4 text-inherit" />
                     <span>Conformidade & IA</span>
                   </button>
+
+                  <button
+                    onClick={() => setAbaAtiva('checklist')}
+                    className={`pb-2.5 text-xs font-bold uppercase tracking-wider transition border-b-2 mr-6 flex items-center space-x-1.5 cursor-pointer shrink-0 relative ${
+                      abaAtiva === 'checklist' 
+                        ? 'border-blue-600 text-blue-600' 
+                        : 'border-transparent text-slate-400 hover:text-slate-650'
+                    }`}
+                  >
+                    <ClipboardCheck className="w-4 h-4 text-inherit" />
+                    <span>Checklist Inspeção</span>
+                    <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 border border-slate-200" title="Itens de verificação técnica">
+                      {itensChecklist.length}
+                    </span>
+                  </button>
                   
                   <button
                     onClick={() => setAbaAtiva('historico')}
@@ -1255,6 +1521,458 @@ export const EquipmentDetailModal: React.FC<Props> = ({
                         })}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {abaAtiva === 'checklist' && (
+                  <div className="space-y-6 animate-in fade-in duration-250">
+                    <div className="border-b pb-3 border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
+                          <ClipboardCheck className="w-4 h-4 text-emerald-600" />
+                          <span>Checklist de Segurança & Qualidade (Inspeção Técnica)</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Efetue vistorias preventivas para garantir a conformidade mecânica, elétrica e funcional deste ativo.
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <button
+                          onClick={handleResetChecklist}
+                          className="px-2.5 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-650 text-[10px] font-bold rounded-lg transition flex items-center space-x-1 cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Reiniciar Checklist</span>
+                        </button>
+                        <button
+                          onClick={handleSalvarChecklist}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded-lg transition flex items-center space-x-1 cursor-pointer shadow-xs"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>Finalizar & Registrar</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* FILTROS E PROGRESSO */}
+                    <div className="bg-slate-50/50 border border-slate-200/80 p-4 rounded-xl space-y-4 shadow-3xs">
+                      {/* Barra de Progresso com Métricas */}
+                      <div className="space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider flex items-center space-x-1.5">
+                            <Activity className="w-3.5 h-3.5 text-blue-500 animate-pulse" />
+                            <span>Status de Verificação Técnica</span>
+                          </span>
+                          <span className="text-[11px] font-extrabold text-slate-700 bg-slate-100 border border-slate-250/60 px-2.5 py-0.5 rounded-full font-mono">
+                            {itensChecklist.filter(it => it.status !== 'pendente').length} de {itensChecklist.length} itens respondidos ({itensChecklist.length > 0 ? Math.round((itensChecklist.filter(it => it.status !== 'pendente').length / itensChecklist.length) * 100) : 0}%)
+                          </span>
+                        </div>
+
+                        {/* Progresso visual */}
+                        <div className="relative h-3 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner flex">
+                          <div 
+                            className="h-full bg-gradient-to-r from-blue-500 via-teal-500 to-emerald-500 transition-all duration-500 relative flex items-center justify-end"
+                            style={{ 
+                              width: `${itensChecklist.length > 0 ? (itensChecklist.filter(it => it.status !== 'pendente').length / itensChecklist.length) * 100 : 0}%` 
+                            }}
+                          >
+                            <div className="absolute right-0 top-0 bottom-0 w-2 bg-white/20 animate-pulse" />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10px] font-bold text-slate-500 pt-0.5">
+                          <span className="flex items-center space-x-1">
+                            <span className="w-2.5 h-2.5 rounded-full bg-white border border-slate-300 inline-block" />
+                            <span>Pendente ({itensChecklist.filter(i => i.status === 'pendente').length})</span>
+                          </span>
+                          <span className="flex items-center space-x-1 text-emerald-600">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                            <span>Conforme ({itensChecklist.filter(i => i.status === 'conforme').length})</span>
+                          </span>
+                          <span className="flex items-center space-x-1 text-amber-600">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                            <span>Aviso ({itensChecklist.filter(i => i.status === 'nao-conforme').length})</span>
+                          </span>
+                          <span className="flex items-center space-x-1 text-rose-600">
+                            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block animate-pulse" />
+                            <span>Crítico ({itensChecklist.filter(i => i.status === 'critico').length})</span>
+                          </span>
+                          <span className="flex items-center space-x-1 text-slate-500">
+                            <span className="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block" />
+                            <span>N/A ({itensChecklist.filter(i => i.status === 'na').length})</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Filtros em Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-3 border-t border-slate-200/60">
+                        {/* 1. Busca por texto */}
+                        <div className="md:col-span-5 relative">
+                          <label className="text-[10px] font-black text-slate-450 uppercase tracking-wider mb-1 block">Pesquisar Diretrizes</label>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                            <input
+                              type="text"
+                              value={filtroTextoChecklist}
+                              onChange={e => setFiltroTextoChecklist(e.target.value)}
+                              placeholder="Filtre as avaliações técnica..."
+                              className="w-full pl-9 pr-8 py-1.5 bg-white border border-slate-250 text-xs font-semibold text-slate-805 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            {filtroTextoChecklist && (
+                              <button
+                                onClick={() => setFiltroTextoChecklist("")}
+                                className="absolute right-2.5 top-2.5 text-[11px] font-bold text-slate-400 hover:text-slate-650 cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 2. Filtro de Categoria/Segmento */}
+                        <div className="md:col-span-4">
+                          <label className="text-[10px] font-black text-slate-450 uppercase tracking-wider mb-1 block">Segmento do Equipamento</label>
+                          <div className="relative">
+                            <Filter className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                            <select
+                              value={filtroCategoriaChecklist}
+                              onChange={e => setFiltroCategoriaChecklist(e.target.value)}
+                              className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-250 text-xs font-bold text-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+                            >
+                              <option value="Todos">All Segmentos ({itensChecklist.length})</option>
+                              <option value="Segurança">🛡️ Segurança ({itensChecklist.filter(i => i.categoria === "Segurança").length})</option>
+                              <option value="Lubrificação">🛢️ Lubrificação ({itensChecklist.filter(i => i.categoria === "Lubrificação").length})</option>
+                              <option value="Mecânica">⚙️ Mecânica ({itensChecklist.filter(i => i.categoria === "Mecânica").length})</option>
+                              <option value="Elétrica">⚡ Elétrica ({itensChecklist.filter(i => i.categoria === "Elétrica").length})</option>
+                              <option value="Vedação">💧 Vedação / Vazamento ({itensChecklist.filter(i => i.categoria === "Vedação").length})</option>
+                              <option value="Medição">📐 Ajustes e Calibração ({itensChecklist.filter(i => i.categoria === "Medição").length})</option>
+                              <option value="Especificidades">🎯 Especificidades / Outros ({itensChecklist.filter(i => i.categoria === "Especificidades").length})</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                              <ChevronDown className="h-3.5 w-3.5 text-slate-450" />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 3. Filtro de Status */}
+                        <div className="md:col-span-3">
+                          <label className="text-[10px] font-black text-slate-450 uppercase tracking-wider mb-1 block">Status de Vistoria</label>
+                          <div className="relative">
+                            <select
+                              value={filtroStatusChecklist}
+                              onChange={e => setFiltroStatusChecklist(e.target.value)}
+                              className="w-full px-3 py-1.5 bg-white border border-slate-250 text-xs font-bold text-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+                            >
+                              <option value="Todos">🏷️ Todos os Status ({itensChecklist.length})</option>
+                              <option value="Pendente">⚪ Pendentes ({itensChecklist.filter(i => i.status === 'pendente').length})</option>
+                              <option value="Conforme">🟢 Conformes ({itensChecklist.filter(i => i.status === 'conforme').length})</option>
+                              <option value="Não Conforme">🟡 Avisos ({itensChecklist.filter(i => i.status === 'nao-conforme').length})</option>
+                              <option value="Crítico">🔴 Críticos ({itensChecklist.filter(i => i.status === 'critico').length})</option>
+                              <option value="N/A">⚫ N/A ({itensChecklist.filter(i => i.status === 'na').length})</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                              <ChevronDown className="h-3.5 w-3.5 text-slate-450" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Formulário Rich para Adição de Item Personalizado */}
+                    <div className="bg-slate-50 border border-slate-205 p-4 rounded-xl space-y-3 shadow-3xs hover:border-slate-300 transition-all">
+                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center space-x-1">
+                        <PlusCircle className="w-3.5 h-3.5 text-blue-500" />
+                        <span>Adicionar Item Personalizado ao Checklist Regulamentar</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <select
+                          value={novoItemCat}
+                          onChange={e => setNovoItemCat(e.target.value)}
+                          className="bg-white border border-slate-250 text-xs font-bold text-slate-705 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shrink-0"
+                        >
+                          <option value="Segurança">🛡️ Segurança</option>
+                          <option value="Lubrificação">🛢️ Lubrificação</option>
+                          <option value="Mecânica">⚙️ Mecânica</option>
+                          <option value="Elétrica">⚡ Elétrica</option>
+                          <option value="Vedação">💧 Vedação / Vazamentos</option>
+                          <option value="Medição">📐 Ajustes e Calibração</option>
+                          <option value="Especificidades">🎯 Especificidades</option>
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Ex: Monitorar folga no barramento traseiro, barulho sob carga de usinagem..."
+                          value={novoItemDesc}
+                          onChange={e => setNovoItemDesc(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') handleAdicionarItemChecklist(); }}
+                          className="flex-1 px-3 py-1.5 border border-slate-250 bg-white text-xs text-slate-850 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                        />
+                        <button
+                          onClick={handleAdicionarItemChecklist}
+                          className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg transition shrink-0 cursor-pointer shadow-2xs"
+                        >
+                          + Adicionar Item
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Lista Principal de Itens Filtrados */}
+                    <div className="space-y-2 max-h-[460px] overflow-y-auto scrollbar-thin pr-1.5">
+                      {itensChecklist.filter(item => {
+                        const matchesTexto = item.item.toLowerCase().includes(filtroTextoChecklist.toLowerCase()) || 
+                                             item.categoria.toLowerCase().includes(filtroTextoChecklist.toLowerCase());
+                        
+                        let matchesStatus = true;
+                        if (filtroStatusChecklist !== "Todos") {
+                          if (filtroStatusChecklist === "Pendente") matchesStatus = item.status === "pendente";
+                          else if (filtroStatusChecklist === "Conforme") matchesStatus = item.status === "conforme";
+                          else if (filtroStatusChecklist === "Não Conforme") matchesStatus = item.status === "nao-conforme";
+                          else if (filtroStatusChecklist === "Crítico") matchesStatus = item.status === "critico";
+                          else if (filtroStatusChecklist === "N/A") matchesStatus = item.status === "na";
+                        }
+                        
+                        let matchesCategoria = true;
+                        if (filtroCategoriaChecklist !== "Todos") {
+                          matchesCategoria = item.categoria === filtroCategoriaChecklist;
+                        }
+                        
+                        return matchesTexto && matchesStatus && matchesCategoria;
+                      }).map((item) => {
+                        const cores = obterCoresCategoria(item.categoria);
+                        return (
+                          <div 
+                            key={item.id} 
+                            className={`p-3.5 rounded-xl border flex flex-col md:flex-row md:items-center md:justify-between gap-3 transition-all duration-300 hover:shadow-2xs ${cores.cardBg} ${cores.textSide}`}
+                          >
+                            <div className="space-y-1.5 md:max-w-[50%] flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className={`text-[8.5px] font-extrabold uppercase px-2 py-0.5 rounded border font-mono tracking-wider flex items-center space-x-1 ${cores.badgeBg}`}>
+                                  <span>{cores.emoji}</span>
+                                  <span>{item.categoria}</span>
+                                </span>
+                              </div>
+                              <div className="flex items-start space-x-3">
+                                {/* Checkbox redonda interativa */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleMudarStatusItem(item.id, item.status === 'conforme' ? 'pendente' : 'conforme')}
+                                  className={`w-5 h-5 rounded-full border transition-all flex items-center justify-center shrink-0 cursor-pointer mt-0.5 ${
+                                    item.status === 'conforme'
+                                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-xs'
+                                      : item.status === 'nao-conforme'
+                                      ? 'bg-amber-500 border-amber-500 text-white shadow-xs'
+                                      : item.status === 'critico'
+                                      ? 'bg-rose-500 border-rose-500 text-white shadow-xs animate-pulse'
+                                      : item.status === 'na'
+                                      ? 'bg-slate-400 border-slate-400 text-white shadow-xs'
+                                      : 'border-slate-300 bg-white hover:border-emerald-400 hover:bg-slate-50'
+                                  }`}
+                                  title={item.status === 'conforme' ? "Quesito em conforme. Clique para reverter." : "Atende à conformidade técnica? Marcar OK."}
+                                >
+                                  {item.status === 'conforme' ? (
+                                    <Check className="w-3 h-3 stroke-[4]" />
+                                  ) : item.status === 'nao-conforme' ? (
+                                    <span className="text-[8px] font-black leading-none">!</span>
+                                  ) : item.status === 'critico' ? (
+                                    <span className="text-[8px] font-black leading-none">🚨</span>
+                                  ) : item.status === 'na' ? (
+                                    <span className="text-[7px] font-black leading-none">-</span>
+                                  ) : (
+                                    <span className="w-2 h-2 rounded-full bg-slate-100 border border-transparent" />
+                                  )}
+                                </button>
+                                <p className={`text-xs font-bold leading-relaxed transition-all duration-300 ${
+                                  item.status === 'conforme'
+                                    ? 'line-through text-slate-400 italic decoration-slate-400 decoration-1.5 opacity-65 translate-x-0.5'
+                                    : cores.colorText
+                                }`}>
+                                  {item.item}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 md:justify-end">
+                              {/* Seletor de Status Técnico */}
+                              <div className="flex items-center space-x-1 shrink-0 bg-white p-1 rounded-xl border border-slate-200 shadow-3xs">
+                                <button
+                                  type="button"
+                                  onClick={() => handleMudarStatusItem(item.id, 'conforme')}
+                                  className={`px-3 py-1 text-[9px] font-black uppercase rounded-lg transition-all flex items-center space-x-0.5 cursor-pointer select-none ${
+                                    item.status === 'conforme'
+                                      ? 'bg-emerald-500 text-white shadow-xs'
+                                      : 'text-slate-400 hover:text-slate-700 bg-slate-50'
+                                  }`}
+                                  title="Marcar como Conforme / Aprovado"
+                                >
+                                  <span>OK</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMudarStatusItem(item.id, 'nao-conforme')}
+                                  className={`px-3 py-1 text-[9px] font-black uppercase rounded-lg transition-all flex items-center space-x-0.5 cursor-pointer select-none ${
+                                    item.status === 'nao-conforme'
+                                      ? 'bg-amber-500 text-white shadow-xs'
+                                      : 'text-slate-400 hover:text-slate-700 bg-slate-50'
+                                  }`}
+                                  title="Marcar como Desconformidade Simples (Aviso)"
+                                >
+                                  <span>Aviso</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMudarStatusItem(item.id, 'critico')}
+                                  className={`px-3 py-1 text-[9px] font-black uppercase rounded-lg transition-all flex items-center space-x-0.5 cursor-pointer select-none ${
+                                    item.status === 'critico'
+                                      ? 'bg-rose-500 text-white shadow-xs'
+                                      : 'text-slate-400 hover:text-slate-700 bg-slate-50'
+                                  }`}
+                                  title="Marcar como Defeito Crítico (Requer reparo imediato)"
+                                >
+                                  <span>CRÍT</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMudarStatusItem(item.id, 'na')}
+                                  className={`px-3 py-1 text-[9px] font-black uppercase rounded-lg transition-all flex items-center space-x-0.5 cursor-pointer select-none ${
+                                    item.status === 'na'
+                                      ? 'bg-slate-400 text-white shadow-xs'
+                                      : 'text-slate-400 hover:text-slate-700 bg-slate-50'
+                                  }`}
+                                  title="Não se aplica a esta máquina"
+                                >
+                                  <span>N/A</span>
+                                </button>
+                              </div>
+
+                              {/* Observação técnica */}
+                              <input
+                                type="text"
+                                value={item.observacao}
+                                onChange={e => handleMudarObservacaoItem(item.id, e.target.value)}
+                                placeholder="Anotação técnica..."
+                                className="flex-1 min-w-[140px] md:max-w-[200px] bg-slate-50 text-slate-800 px-3 rounded-lg py-1 border border-slate-205 text-xs focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 font-medium placeholder-slate-400"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {itensChecklist.filter(item => {
+                        const matchesTexto = item.item.toLowerCase().includes(filtroTextoChecklist.toLowerCase()) || 
+                                             item.categoria.toLowerCase().includes(filtroTextoChecklist.toLowerCase());
+                        
+                        let matchesStatus = true;
+                        if (filtroStatusChecklist !== "Todos") {
+                          if (filtroStatusChecklist === "Pendente") matchesStatus = item.status === "pendente";
+                          else if (filtroStatusChecklist === "Conforme") matchesStatus = item.status === "conforme";
+                          else if (filtroStatusChecklist === "Não Conforme") matchesStatus = item.status === "nao-conforme";
+                          else if (filtroStatusChecklist === "Crítico") matchesStatus = item.status === "critico";
+                          else if (filtroStatusChecklist === "N/A") matchesStatus = item.status === "na";
+                        }
+                        
+                        let matchesCategoria = true;
+                        if (filtroCategoriaChecklist !== "Todos") {
+                          matchesCategoria = item.categoria === filtroCategoriaChecklist;
+                        }
+                        
+                        return matchesTexto && matchesStatus && matchesCategoria;
+                      }).length === 0 && (
+                        <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-205 rounded-xl">
+                          <ClipboardCheck className="w-8 h-8 text-slate-350 mx-auto mb-2 animate-bounce" />
+                          <p className="text-xs text-slate-500 font-bold">Nenhum quesito atende aos filtros definidos.</p>
+                          <button
+                            onClick={() => {
+                              setFiltroTextoChecklist("");
+                              setFiltroStatusChecklist("Todos");
+                              setFiltroCategoriaChecklist("Todos");
+                            }}
+                            className="mt-3 text-[11px] font-bold text-blue-600 hover:underline hover:text-blue-700 flex items-center space-x-1 mx-auto cursor-pointer"
+                          >
+                            <span>Limpar todos os filtros</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Histórico de Auditoria */}
+                    <div className="border-t pt-5 border-slate-200/90 space-y-4">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-850 uppercase tracking-widest flex items-center space-x-1.5">
+                          <Clock className="w-4 h-4 text-slate-500" />
+                          <span>Histórico de Inspeções Recentes do Ativo</span>
+                        </h4>
+                        <p className="text-[10px] text-slate-500">Rastreabilidade metrológica e registros históricos das auditorias preventivas executadas neste ativo.</p>
+                      </div>
+
+                      {historicoChecklist.length === 0 ? (
+                        <div className="text-center py-7 bg-slate-50/50 border border-dashed border-slate-200 rounded-xl">
+                          <p className="text-xs text-slate-400 font-bold">Nenhum checklist foi assinado e salvo ou o histórico está vazio.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {historicoChecklist.map((rec) => {
+                            const isExc = rec.notaGeral.includes("Exce");
+                            const isCrit = rec.notaGeral.includes("Urg");
+                            const cardColor = isExc ? "border-emerald-150 bg-emerald-50/10" : isCrit ? "border-rose-150 bg-rose-50/15" : "border-amber-150 bg-amber-50/15";
+                            return (
+                              <div key={rec.id} className={`p-4 rounded-xl border ${cardColor} space-y-3 shadow-xs relative group`}>
+                                <div className="flex items-center justify-between gap-1">
+                                  <div>
+                                    <span className="text-[9px] font-black text-slate-400 font-mono tracking-wider">{rec.data}</span>
+                                    <h5 className="text-xs font-black text-slate-800 mt-0.5">{rec.usuario}</h5>
+                                  </div>
+                                  <button
+                                    onClick={() => handleExcluirRegistroChecklist(rec.id)}
+                                    className="p-1 hover:bg-slate-100/80 rounded-lg text-slate-400 hover:text-rose-600 transition cursor-pointer"
+                                    title="Excluir Auditoria"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                                    isExc ? 'bg-emerald-100 text-emerald-850 border border-emerald-200' : isCrit ? 'bg-rose-100 text-rose-850 border border-rose-200' : 'bg-amber-100 text-amber-850 border border-amber-200'
+                                  }`}>
+                                    Status: {rec.notaGeral}
+                                  </span>
+                                  {rec.inconformidadesCount > 0 && (
+                                    <span className="text-[9px] font-extrabold bg-amber-50 border border-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-mono">
+                                      {rec.inconformidadesCount} Avisos
+                                    </span>
+                                  )}
+                                  {rec.criticosCount > 0 && (
+                                    <span className="text-[9px] font-extrabold bg-rose-50 border border-rose-200 text-rose-800 px-2 py-0.5 rounded-full font-mono">
+                                      {rec.criticosCount} Críticos 🚨
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Resumo de Erros se houver */}
+                                {rec.itens.filter(i => i.status === 'nao-conforme' || i.status === 'critico').length > 0 && (
+                                  <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-150 space-y-1">
+                                    <span className="text-[8.5px] font-black text-slate-450 uppercase tracking-wider block">Desconformidades Apontadas:</span>
+                                    <div className="space-y-1">
+                                      {rec.itens.filter(i => i.status === 'nao-conforme' || i.status === 'critico').map((item, idx) => (
+                                        <div key={idx} className="text-[10px] leading-snug font-bold">
+                                          <span className={item.status === 'critico' ? "text-rose-600" : "text-amber-600"}>
+                                            • [{item.status.slice(0, 4).toUpperCase()}]
+                                          </span>{" "}
+                                          <span className="text-slate-700">{item.item}</span>
+                                          {item.observacao && (
+                                            <span className="text-slate-450 block pl-3 font-medium">Obs: {item.observacao}</span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 

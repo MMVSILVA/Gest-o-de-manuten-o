@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sparkles } from "lucide-react";
 import { OrdemServico, Colaborador, Equipamento } from "../types";
 
@@ -30,6 +30,24 @@ export const NovaOsView: React.FC<Props> = ({
   const [dataHora, setDataHora] = useState("");
   const [descricao, setDescricao] = useState("");
   const [otimizando, setOtimizando] = useState(false);
+
+  useEffect(() => {
+    const prefilledDesc = localStorage.getItem("manutech_prefilled_os_desc");
+    if (prefilledDesc) {
+      setDescricao(prefilledDesc);
+      localStorage.removeItem("manutech_prefilled_os_desc");
+    }
+    const prefilledTipo = localStorage.getItem("manutech_prefilled_os_tipo");
+    if (prefilledTipo) {
+      setTipo(prefilledTipo as OrdemServico['tipo']);
+      localStorage.removeItem("manutech_prefilled_os_tipo");
+    }
+    const prefilledPrio = localStorage.getItem("manutech_prefilled_os_prio");
+    if (prefilledPrio) {
+      setPrioridade(prefilledPrio as OrdemServico['prioridade']);
+      localStorage.removeItem("manutech_prefilled_os_prio");
+    }
+  }, []);
 
   const handleSubmete = (e: React.FormEvent) => {
     e.preventDefault();
